@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.client.json",
+  "compilerOptions": {
+    "types": ["vite/client", "node", "@cloudflare/workers-types"]
+  },
+  "include": [
+    "tests/client/**/*.ts",
+    "tests/client/**/*.tsx",
+    "tests/mocks/**/*.ts",
+    "src/client/**/*.ts",
+    "src/client/**/*.tsx",
+    "src/shared/**/*.ts",
+    "src/server/**/*.ts",
+    "vitest.config.ts",
+    "vitest.client.config.ts"
+  ]
+}

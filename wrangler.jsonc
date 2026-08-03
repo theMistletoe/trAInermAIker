@@ -1,0 +1,34 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "cloudflare-templete",
+  "main": "src/server/index.ts",
+  "compatibility_date": "2026-05-08",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "./dist/client",
+    "not_found_handling": "single-page-application",
+    "binding": "ASSETS"
+  },
+  // Deliberately NO `ai` binding here: Workers AI has no local simulation, so a
+  // declared binding makes `vite dev` (and the vitest workers pool) demand an
+  // authenticated remote proxy session at STARTUP — breaking CI/E2E and any
+  // unauthenticated dev loop. The summarizer instead reaches Workers AI over
+  // REST when CLOUDFLARE_ACCOUNT_ID / CLOUDFLARE_AI_TOKEN are set (.dev.vars
+  // locally, `wrangler secret` in prod) and degrades to a deterministic stub
+  // otherwise. See src/server/lib/summarizer.ts.
+  "observability": {
+    "enabled": true
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "cloudflare_templete",
+      // Placeholder id. Local dev / miniflare / db:migrate:local all key off the
+      // binding + database_name, so this works as-is without a Cloudflare
+      // account. Replace with the real id from `npm run db:create:remote` only
+      // when setting up production (see README).
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ]
+}

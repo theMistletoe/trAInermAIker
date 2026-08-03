@@ -1,0 +1,18 @@
+# Copy to .dev.vars for local `vite dev` / wrangler.
+#
+# Production: set BOTH via `wrangler secret put ...`. BETTER_AUTH_URL must be the
+# real deployed origin (e.g. https://your-app.example.com) — it backs Better
+# Auth's Origin/CSRF check. A non-localhost URL without BETTER_AUTH_SECRET makes
+# createAuth() throw (see src/server/auth.ts) so a missing secret fails loudly
+# instead of signing sessions with a public dev key.
+BETTER_AUTH_SECRET=generate-with-openssl-rand-base64-32-at-least-32-chars
+BETTER_AUTH_URL=http://localhost:5173
+
+# Workers AI (note summarization). Optional: without these the summarizer uses
+# a deterministic stub (whitespace cleanup + truncation) — the app still works
+# end-to-end. Create an API token with the "Workers AI (Read)" permission.
+# Production: set both via `wrangler secret put ...`.
+CLOUDFLARE_ACCOUNT_ID=your-cloudflare-account-id
+CLOUDFLARE_AI_TOKEN=your-workers-ai-api-token
+# Uncomment to force the stub even when the credentials above are set.
+# AI_STUB=1
