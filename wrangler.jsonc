@@ -27,7 +27,7 @@
       // binding + database_name, so this works as-is without a Cloudflare
       // account. Replace with the real id from `npm run db:create:remote` only
       // when setting up production (see README).
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "defbeb88-a0e2-4bc9-94de-bc54622dae36",
       "migrations_dir": "migrations"
     }
   ]
