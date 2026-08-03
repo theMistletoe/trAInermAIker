@@ -5,6 +5,7 @@ declare module 'cloudflare:test' {
     // never hit non-/api/* paths, so it stays unbound. Cast as Fetcher so the
     // src/server types stay accurate.
     ASSETS: Fetcher;
+    SUBMISSIONS: R2Bucket;
     TEST_MIGRATIONS: D1Migration[];
   }
 }

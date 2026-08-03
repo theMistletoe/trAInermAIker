@@ -1,6 +1,13 @@
 export interface Bindings {
   DB: D1Database;
   ASSETS: Fetcher;
+  // R2 bucket for submitted challenge deliverables (zip archives).
+  SUBMISSIONS: R2Bucket;
+  // OpenAI API for the challenge AI agents (assessment / requirement chat /
+  // QA generation / report). Absent → deterministic stubs (see lib/ai.ts).
+  OPENAI_API_KEY?: string;
+  // Overrides the default model id ('gpt-5.6').
+  OPENAI_MODEL?: string;
   // Workers AI binding for the note summarizer. Not declared in wrangler.jsonc
   // (a declared binding breaks unauthenticated dev/test startup — see the
   // comment there) but kept optional so a bound environment is used first if

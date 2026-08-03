@@ -19,6 +19,15 @@
   "observability": {
     "enabled": true
   },
+  // Unlike Workers AI, R2 has a full local simulation (miniflare), so declaring
+  // the binding does NOT break the unauthenticated dev/test loop. Production
+  // bucket is created idempotently by deploy.yml (`r2 bucket info || create`).
+  "r2_buckets": [
+    {
+      "binding": "SUBMISSIONS",
+      "bucket_name": "trainermaiker-submissions"
+    }
+  ],
   "d1_databases": [
     {
       "binding": "DB",
