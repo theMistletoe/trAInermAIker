@@ -1,3 +1,5 @@
+import { ZIP_MAX_BYTES } from './constants';
+
 /**
  * UI 文言の集約。
  * i18n を入れない代わりに、プロダクトコードとテストの文言をここで一元管理し、
@@ -66,7 +68,7 @@ export const MESSAGES = {
     uploading: 'アップロード中…',
     uploaded: '提出が完了しました',
     uploadFailed: 'アップロードに失敗しました',
-    tooLarge: 'ファイルサイズは10MB以下にしてください',
+    tooLarge: `ファイルサイズは${ZIP_MAX_BYTES / 1024 / 1024}MB以下にしてください`,
     invalidType: 'ZIP形式のファイルを選択してください',
     filesTitle: '提出ファイル',
     filesEmpty: 'まだ提出がありません',

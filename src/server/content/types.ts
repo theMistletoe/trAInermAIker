@@ -15,6 +15,12 @@ export interface ChallengeContent {
   /** PUBLIC: short problem statement shown before starting (markdown). */
   descriptionMd: string;
   /**
+   * PUBLIC: deliverable format and technical constraints, shown in the
+   * submission phase. Kept out of hiddenSpecMd on purpose: submission-format
+   * rules are not requirements the user should have to elicit via chat.
+   */
+  submissionGuideMd: string;
+  /**
    * SECRET: the full requirement spec (functional/auth/scale/security/... and
    * deliverables). Fed only to AI prompts; must never reach the wire.
    */

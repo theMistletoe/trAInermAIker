@@ -177,10 +177,12 @@ AWS CDKのスタックを削除した場合に、登録済みファイルを残�
 正確な月額料金の計算は必須ではありません。
 
 どのAWSリソースに主な費用が発生するかを説明してください。
+`;
 
----
-
-## 9. 技術的制約
+// PUBLIC (shown in the submission phase): deliverable format and constraints
+// are not "requirements to elicit" — hiding them would penalize users for
+// information they had no legitimate way to learn.
+const submissionGuideMd = `## 技術的制約
 
 * AWS CDKのTypeScriptを使用すること
 * \`cdk synth\`が成功すること
@@ -194,7 +196,7 @@ AWS CDKのスタックを削除した場合に、登録済みファイルを残�
 
 ---
 
-## 10. 提出物
+## 提出物
 
 ### 1. AWS CDKコード
 
@@ -283,6 +285,7 @@ export const challenge1: ChallengeContent = {
   summary:
     '従業員20名規模の社内向けファイル共有サービスのAWSアーキテクチャを設計し、AWS CDK（TypeScript）で実装する課題。運用負荷と月額コストを抑えつつ要件を満たす設計判断力を問う。',
   descriptionMd,
+  submissionGuideMd,
   hiddenSpecMd,
   rubricMd,
   personaBrief,

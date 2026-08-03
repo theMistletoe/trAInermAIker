@@ -60,6 +60,8 @@ export const challengeSummarySchema = z.object({
 // deliberately have no schema here: they must never reach the wire.
 export const challengeDetailSchema = challengeSummarySchema.extend({
   descriptionMd: z.string(),
+  // Deliverable format / technical constraints (shown in the submission phase).
+  submissionGuideMd: z.string(),
 });
 
 export const listChallengesResponseSchema = z.object({

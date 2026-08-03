@@ -134,15 +134,15 @@ describe('決定的スタブ (stubs)', () => {
 });
 
 describe('逐語リークガード (guardVerbatimLeak)', () => {
-  it('隠し仕様の81字以上の逐語コピーを含む返信は定型の受け流しに置き換える', () => {
+  it('隠し仕様の80字以上の逐語コピーを含む返信は定型の受け流しに置き換える', () => {
     const leak = normalizedSpec.slice(100, 300);
     const out = guardVerbatimLeak(leak, challenge1.hiddenSpecMd);
     expect(out).not.toBe(leak);
     expect(out).not.toContain(leak.slice(0, 81));
   });
 
-  it('80字未満の短い引用はそのまま通す', () => {
-    const short = normalizedSpec.slice(100, 160);
+  it('検出窓より短い引用はそのまま通す', () => {
+    const short = normalizedSpec.slice(100, 140);
     expect(guardVerbatimLeak(short, challenge1.hiddenSpecMd)).toBe(short);
   });
 

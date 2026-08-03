@@ -42,6 +42,17 @@ describe('課題1 (aws-cdk-file-sharing) のコンテンツ', () => {
     expect(challenge.hiddenSpecMd).toContain('暗号化');
   });
 
+  it('提出要領 (submissionGuideMd) は公開で、提出フォーマット情報を含む', () => {
+    expect(challenge.submissionGuideMd).toContain('cdk synth');
+    expect(challenge.submissionGuideMd).toContain('README');
+    expect(challenge.submissionGuideMd).toContain('提出物');
+  });
+
+  it('提出フォーマット情報は秘匿仕様に含まれない（チャットで引き出せない情報で減点しない）', () => {
+    expect(challenge.hiddenSpecMd).not.toContain('cdk synth');
+    expect(challenge.hiddenSpecMd).not.toContain('提出物');
+  });
+
   it('評価基準 (rubricMd) が評価に言及する', () => {
     expect(challenge.rubricMd).toContain('評価');
   });

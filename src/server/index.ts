@@ -1,6 +1,9 @@
 import { Hono } from 'hono';
+import { HTTPException } from 'hono/http-exception';
 import { createAuth } from './auth';
 import { errorBody } from './lib/errors';
+import { attemptsRoute } from './routes/attempts';
+import { challengesRoute } from './routes/challenges';
 import { notesRoute } from './routes/notes';
 import type { Bindings } from './types';
 
@@ -8,7 +11,10 @@ import type { Bindings } from './types';
 // Hono RPC client (`hc<AppType>`) uses to derive request/response types.
 // `notFound` and `onError` are intentionally applied as statements below so
 // their return types don't leak into AppType.
-const app = new Hono<{ Bindings: Bindings }>().route('/api/notes', notesRoute);
+const app = new Hono<{ Bindings: Bindings }>()
+  .route('/api/notes', notesRoute)
+  .route('/api/challenges', challengesRoute)
+  .route('/api/attempts', attemptsRoute);
 
 export type AppType = typeof app;
 
@@ -32,6 +38,11 @@ app.notFound((c) => {
 });
 
 app.onError((err, c) => {
+  // zValidator throws HTTPException(400) on malformed JSON/multipart bodies
+  // before its hook ever runs — surface those as INVALID_BODY, not a 500.
+  if (err instanceof HTTPException && err.status === 400) {
+    return c.json(errorBody('INVALID_BODY'), 400);
+  }
   console.error('unhandled error', err);
   return c.json(errorBody('INTERNAL_ERROR'), 500);
 });

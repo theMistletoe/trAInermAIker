@@ -41,9 +41,9 @@ export interface ChatTurn {
 export const AI_SUBMISSION_CONTEXT_MAX = 100_000; // chars
 export const AI_HISTORY_MAX_TURNS = 40;
 
-const LEAK_WINDOW_CHARS = 81;
-// Windows overlap by more than half, so any verbatim run comfortably longer
-// than the window still contains at least one sampled window.
+const LEAK_WINDOW_CHARS = 41;
+// Detection guarantee: any verbatim run of at least WINDOW + STEP - 1 (= 80)
+// normalized chars fully contains a sampled window regardless of alignment.
 const LEAK_SCAN_STEP = 40;
 
 const LEAK_DEFLECTION =
@@ -55,12 +55,12 @@ function normalizeWhitespace(text: string): string {
 
 /**
  * Last line of defense for the requirement-chat persona: if the model pastes a
- * long verbatim run of the hidden spec despite the prompt rules, replace the
- * whole reply with a canned in-character deflection.
+ * verbatim run (>= ~80 normalized chars) of the secret text despite the prompt
+ * rules, replace the whole reply with a canned in-character deflection.
  */
-export function guardVerbatimLeak(reply: string, hiddenSpecMd: string): string {
+export function guardVerbatimLeak(reply: string, secretText: string): string {
   const normReply = normalizeWhitespace(reply);
-  const normSpec = normalizeWhitespace(hiddenSpecMd);
+  const normSpec = normalizeWhitespace(secretText);
   if (normReply.length < LEAK_WINDOW_CHARS) return reply;
   const lastStart = normReply.length - LEAK_WINDOW_CHARS;
   for (let i = 0; ; i += LEAK_SCAN_STEP) {
@@ -177,6 +177,11 @@ export async function evaluateAssessment(
   return stubSkillProfile(challenge, answers);
 }
 
+/**
+ * Note: `history` must NOT include the current `userMessage` — the prompt
+ * builder appends it as the final user turn, and the stub index counts it
+ * separately.
+ */
 export async function requirementChatReply(
   deps: AiDeps,
   input: {
@@ -202,7 +207,8 @@ export async function requirementChatReply(
     });
     const reply = raw.trim();
     if (!reply) return stubRequirementReply(userTurnCount + 1);
-    return guardVerbatimLeak(reply, challenge.hiddenSpecMd);
+    // personaBrief is secret too — guard against both.
+    return guardVerbatimLeak(reply, `${challenge.hiddenSpecMd}\n${challenge.personaBrief}`);
   } catch (e) {
     console.error('requirementChatReply: AI call failed, falling back to stub', e);
     return stubRequirementReply(userTurnCount + 1);
