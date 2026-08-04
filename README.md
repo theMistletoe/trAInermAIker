@@ -172,7 +172,7 @@ cp .dev.vars.example .dev.vars   # OPENAI_API_KEY を設定（BETTER_AUTH_* も�
    ```
 
 3. **（任意）デプロイ後スモークを有効化する** — リポジトリ Variable `PRODUCTION_URL`（例 `https://<app>.<account>.workers.dev`）を設定すると、deploy.yml がデプロイ後に `/` と `/api/challenges` の疎通を検証します
-4. **PR → main merge でデプロイ** — PR で `ci.yml`（check / typecheck / build / test + 実 AI E2E）が green になったら main へ merge。`deploy.yml` が同じ検証を再実行し、R2 バケット確保（`r2 bucket info || create`）→ D1 リモート migrate → `wrangler deploy` → スモークの順に進みます。なお D1 の `database_id` は初回のみ `npm run db:create:remote`（人間が手動実行）で採番し `wrangler.jsonc` に貼ります
+4. **PR → main merge でデプロイ** — PR で `ci.yml`（check / typecheck / build / test + 実 AI E2E）が green になったら main へ merge。`deploy.yml` は check / typecheck / build / vitest を再実行し（Playwright E2E は PR CI のみ）、R2 バケット確保（`r2 bucket info || create`）→ D1 リモート migrate → `wrangler deploy` → スモークの順に進みます。D1 の `database_id` は設定済み（新規環境を作る場合のみ `npm run db:create:remote` を人間が手動実行して差し替え）
 5. **ロールバック** — Cloudflare dashboard の Workers → Deployments から前バージョンへ切り替え。マイグレーションは追記のみ（append-only）運用なので、旧コードへ戻しても常に安全です
 
 ## 新しい課題の追加方法

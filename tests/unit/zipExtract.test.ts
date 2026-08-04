@@ -37,6 +37,21 @@ describe('zipテキスト抽出 (extractTextFiles)', () => {
     expect(readme?.size).toBe(strToU8('# sample').length);
   });
 
+  it('正規化後に同一パスへ衝突するエントリは先勝ちで重複排除する', () => {
+    const zip = zipSync({
+      'lib/a.ts': strToU8('export const first = 1;'),
+      'lib\\a.ts': strToU8('export const second = 2;'),
+      './lib/a.ts': strToU8('export const third = 3;'),
+    });
+
+    const result = extractTextFiles(zip);
+
+    expect(result.files.map((f) => f.path)).toEqual(['lib/a.ts']);
+    expect(result.skippedCount).toBe(2);
+    // sorted raw keys: './lib/a.ts' < 'lib/a.ts' < 'lib\\a.ts' — first wins
+    expect(result.files[0]?.content).toBe('export const third = 3;');
+  });
+
   it('zipとして壊れたバイト列はCORRUPTを投げる', () => {
     expect(extractReason(() => extractTextFiles(new Uint8Array([1, 2, 3])))).toBe('CORRUPT');
   });

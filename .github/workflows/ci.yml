@@ -52,8 +52,9 @@ jobs:
   e2e:
     name: Playwright E2E
     runs-on: ubuntu-latest
-    # Real-AI E2E: the challenge flow makes 10-20 GPT-5.6 calls (some 60-90s).
-    timeout-minutes: 35
+    # Real-AI E2E: the challenge flow makes 10-20 GPT-5.6 calls (some 60-90s);
+    # with retries: 2 the worst case is 3 attempts of the 15-min spec budget.
+    timeout-minutes: 50
     needs: verify
     steps:
       - name: Checkout

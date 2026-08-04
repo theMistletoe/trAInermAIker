@@ -273,9 +273,18 @@ export const attemptsRoute = new Hono<{ Bindings: Bindings }>()
     zValidator('param', attemptIdParamSchema, (result, c) => {
       if (!result.success) return c.json(errorBody('INVALID_ID'), 400);
     }),
+    // Auth gate BEFORE any body handling: without this, an anonymous client's
+    // multipart body would be fully buffered by the form validator just to be
+    // rejected. The handler's own 401 check below stays for uniformity.
+    async (c, next) => {
+      const user = await getSessionUser(c.env, c.req.raw.headers);
+      if (!user) return c.json(errorBody('UNAUTHORIZED'), 401);
+      await next();
+    },
     // Header-level size gate BEFORE the form validator buffers the multipart
-    // body (the authoritative check on file.size stays in the service). The
-    // slack covers multipart boundary/field overhead.
+    // body (the authoritative check on file.size stays in the service; a
+    // chunked request without content-length passes here and is caught there).
+    // The slack covers multipart boundary/field overhead.
     async (c, next) => {
       const contentLength = Number(c.req.header('content-length') ?? '0');
       if (contentLength > ZIP_MAX_BYTES + 64 * 1024) {

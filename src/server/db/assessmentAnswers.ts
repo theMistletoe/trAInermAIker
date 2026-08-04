@@ -18,10 +18,13 @@ export async function insertAssessmentAnswers(
   answers: { questionId: string; value: string }[],
   now: string,
 ): Promise<void> {
+  // Upsert: a submit that failed AFTER this insert (AI eval / phase CAS) must
+  // be retryable — a plain INSERT would hit UNIQUE(attempt_id, question_id)
+  // forever and permanently brick the attempt.
   const stmts = answers.map((a) =>
     db
       .prepare(
-        'INSERT INTO assessment_answers (attempt_id, question_id, answer_value, created_at) VALUES (?1, ?2, ?3, ?4)',
+        'INSERT INTO assessment_answers (attempt_id, question_id, answer_value, created_at) VALUES (?1, ?2, ?3, ?4) ON CONFLICT (attempt_id, question_id) DO UPDATE SET answer_value = excluded.answer_value',
       )
       .bind(attemptId, a.questionId, a.value, now),
   );

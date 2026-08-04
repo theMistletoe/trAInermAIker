@@ -69,7 +69,7 @@ jobs:
           command: deploy
 
       # Armed by setting the PRODUCTION_URL repository variable (e.g.
-      # https://cloudflare-templete.<account>.workers.dev). 200 on the public
+      # https://trainermaiker.<account>.workers.dev). 200 on the public
       # challenge list proves the Worker booted and routes are mounted.
       - name: Post-deploy smoke check
         if: ${{ vars.PRODUCTION_URL != '' }}

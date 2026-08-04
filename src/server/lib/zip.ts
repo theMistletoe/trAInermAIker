@@ -154,6 +154,10 @@ export function extractTextFiles(bytes: Uint8Array, caps?: Partial<ZipCaps>): Ex
 
   const decoder = new TextDecoder();
   const files: ExtractedFile[] = [];
+  // Distinct raw entries can normalize to the same path (`lib\a.ts` vs
+  // `lib/a.ts`); first-wins dedupe keeps the D1 UNIQUE(submission_id, path)
+  // insert from blowing up as a 500.
+  const seenPaths = new Set<string>();
   let totalChars = 0;
 
   // Sorted raw names make cap-limited selection deterministic as well.
@@ -165,7 +169,7 @@ export function extractTextFiles(bytes: Uint8Array, caps?: Partial<ZipCaps>): Ex
       continue;
     }
     const path = normalizePath(name);
-    if (path === null) {
+    if (path === null || seenPaths.has(path)) {
       skippedCount += 1;
       continue;
     }
@@ -192,6 +196,7 @@ export function extractTextFiles(bytes: Uint8Array, caps?: Partial<ZipCaps>): Ex
       isTruncated = true;
     }
     totalChars += content.length;
+    seenPaths.add(path);
     files.push({ path, size: data.length, content, isTruncated });
   }
 

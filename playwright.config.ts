@@ -9,9 +9,9 @@ const evidence = process.env.E2E_EVIDENCE === '1';
 
 export default defineConfig({
   testDir: './tests/e2e',
-  // 各テストは一意な本文（Date.now() サフィックス）でノートを作るため、共有テーブル
-  // 上でもアサーションは衝突しない。ローカルでは並列実行で速度を稼ぎ、CI は D1 local
-  // の同時アクセス挙動が未検証なので安全側に倒して workers: 1 のままにしておく。
+  // 各テストは一意なメールアドレス（Date.now() サフィックス）でユーザーを作るため、
+  // 共有 D1 上でもアサーションは衝突しない。ローカルでは並列実行で速度を稼ぎ、CI は
+  // 安全側に倒して workers: 1 のままにしておく。
   fullyParallel: true,
   ...(process.env.CI ? { workers: 1 } : {}),
   // CI 上での `.only` 取り残しを防ぐ

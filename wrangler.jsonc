@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "cloudflare-templete",
+  "name": "trainermaiker",
   "main": "src/server/index.ts",
   "compatibility_date": "2026-05-08",
   "compatibility_flags": ["nodejs_compat"],
@@ -27,11 +27,12 @@
   "d1_databases": [
     {
       "binding": "DB",
+      // Historical name from before the product rename — it identifies the
+      // already-provisioned production database, so it must not change.
       "database_name": "cloudflare_templete",
-      // Placeholder id. Local dev / miniflare / db:migrate:local all key off the
-      // binding + database_name, so this works as-is without a Cloudflare
-      // account. Replace with the real id from `npm run db:create:remote` only
-      // when setting up production (see README).
+      // Production database id (already provisioned via `db:create:remote`).
+      // Local dev / miniflare / db:migrate:local key off the binding +
+      // database_name only, so this value is inert locally.
       "database_id": "defbeb88-a0e2-4bc9-94de-bc54622dae36",
       "migrations_dir": "migrations"
     }

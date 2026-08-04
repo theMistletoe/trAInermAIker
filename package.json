@@ -1,5 +1,5 @@
 {
-  "name": "cloudflare-templete",
+  "name": "trainermaiker",
   "version": "0.1.0",
   "description": "AI-driven development template on Cloudflare Workers + D1 + React + Hono",
   "type": "module",
