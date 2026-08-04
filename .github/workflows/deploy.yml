@@ -43,6 +43,17 @@ jobs:
       - name: Unit / integration tests
         run: npm test
 
+      # `r2 bucket create` is not idempotent (fails when the bucket exists), so
+      # probe with `info` first. Requires the API token to include
+      # "Workers R2 Storage: Edit".
+      - name: Ensure R2 bucket exists
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          npx wrangler r2 bucket info trainermaiker-submissions \
+            || npx wrangler r2 bucket create trainermaiker-submissions
+
       - name: Apply D1 migrations (remote)
         uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3.15.0
         with:
@@ -56,3 +67,19 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: deploy
+
+      # Armed by setting the PRODUCTION_URL repository variable (e.g.
+      # https://trainermaiker.<account>.workers.dev). 200 on the public
+      # challenge list proves the Worker booted and routes are mounted.
+      - name: Post-deploy smoke check
+        if: ${{ vars.PRODUCTION_URL != '' }}
+        env:
+          PRODUCTION_URL: ${{ vars.PRODUCTION_URL }}
+        run: |
+          curl -fsS -o /dev/null "$PRODUCTION_URL/"
+          code=$(curl -s -o /dev/null -w '%{http_code}' "$PRODUCTION_URL/api/challenges")
+          if [ "$code" != "200" ]; then
+            echo "unexpected /api/challenges status: $code"
+            exit 1
+          fi
+          echo "smoke ok"

@@ -2,20 +2,44 @@ import { hc } from 'hono/client';
 import type { z } from 'zod';
 import type { AppType } from '../../server';
 import {
+  type AdvanceAttemptResponse,
+  type AnswerQaResponse,
   type ApiErrorCode,
+  type AskReportResponse,
+  advanceAttemptResponseSchema,
+  answerQaResponseSchema,
   apiErrorBodySchema,
-  type CreateNoteResponse,
-  createNoteResponseSchema,
-  type DeleteNoteResponse,
-  deleteNoteResponseSchema,
-  type GetNoteResponse,
-  getNoteResponseSchema,
-  type ListMyNotesResponse,
-  type ListNotesResponse,
-  listMyNotesResponseSchema,
-  listNotesResponseSchema,
-  type SummarizeNoteResponse,
-  summarizeNoteResponseSchema,
+  askReportResponseSchema,
+  type CreateAttemptResponse,
+  createAttemptResponseSchema,
+  type GetAssessmentResponse,
+  type GetAttemptResponse,
+  type GetChallengeResponse,
+  type GetReportResponse,
+  type GetSubmissionFileResponse,
+  type GetSubmissionResponse,
+  getAssessmentResponseSchema,
+  getAttemptResponseSchema,
+  getChallengeResponseSchema,
+  getReportResponseSchema,
+  getSubmissionFileResponseSchema,
+  getSubmissionResponseSchema,
+  type ListChallengesResponse,
+  type ListChatMessagesResponse,
+  type ListMyAttemptsResponse,
+  type ListQaResponse,
+  type ListReportMessagesResponse,
+  listChallengesResponseSchema,
+  listChatMessagesResponseSchema,
+  listMyAttemptsResponseSchema,
+  listQaResponseSchema,
+  listReportMessagesResponseSchema,
+  type PostChatResponse,
+  postChatResponseSchema,
+  type SubmitAssessmentResponse,
+  submitAssessmentResponseSchema,
+  type UploadSubmissionResponse,
+  uploadSubmissionResponseSchema,
 } from '../../shared/schemas';
 
 export class ApiError extends Error {
@@ -74,34 +98,126 @@ async function parseResponse<T extends z.ZodTypeAny>(
   return parsed.data;
 }
 
-export async function listNotes(): Promise<ListNotesResponse> {
-  const res = await client.api.notes.$get();
-  return parseResponse(res, listNotesResponseSchema);
+// --- challenges (public catalogue) ---
+
+export async function listChallenges(): Promise<ListChallengesResponse> {
+  const res = await client.api.challenges.$get();
+  return parseResponse(res, listChallengesResponseSchema);
 }
 
-export async function createNote(body: string): Promise<CreateNoteResponse> {
-  const res = await client.api.notes.$post({ json: { body } });
-  return parseResponse(res, createNoteResponseSchema);
+export async function getChallenge(id: string): Promise<GetChallengeResponse> {
+  const res = await client.api.challenges[':id'].$get({ param: { id } });
+  return parseResponse(res, getChallengeResponseSchema);
 }
 
-// Auth is carried by the Better Auth session cookie (sent same-origin); no
-// header wiring needed. Throws ApiError(401, 'UNAUTHORIZED') when signed out.
-export async function listMyNotes(): Promise<ListMyNotesResponse> {
-  const res = await client.api.notes.mine.$get();
-  return parseResponse(res, listMyNotesResponseSchema);
+// --- attempts (all endpoints require a session; throw ApiError(401) when signed out) ---
+
+export async function createAttempt(challengeId: string): Promise<CreateAttemptResponse> {
+  const res = await client.api.attempts.$post({ json: { challengeId } });
+  return parseResponse(res, createAttemptResponseSchema);
 }
 
-export async function getNote(id: number): Promise<GetNoteResponse> {
-  const res = await client.api.notes[':id'].$get({ param: { id: String(id) } });
-  return parseResponse(res, getNoteResponseSchema);
+export async function listMyAttempts(): Promise<ListMyAttemptsResponse> {
+  const res = await client.api.attempts.mine.$get();
+  return parseResponse(res, listMyAttemptsResponseSchema);
 }
 
-export async function summarizeNote(id: number): Promise<SummarizeNoteResponse> {
-  const res = await client.api.notes[':id'].summarize.$post({ param: { id: String(id) } });
-  return parseResponse(res, summarizeNoteResponseSchema);
+export async function getAttempt(id: number): Promise<GetAttemptResponse> {
+  const res = await client.api.attempts[':id'].$get({ param: { id: String(id) } });
+  return parseResponse(res, getAttemptResponseSchema);
 }
 
-export async function deleteNote(id: number): Promise<DeleteNoteResponse> {
-  const res = await client.api.notes[':id'].$delete({ param: { id: String(id) } });
-  return parseResponse(res, deleteNoteResponseSchema);
+export async function getAssessment(id: number): Promise<GetAssessmentResponse> {
+  const res = await client.api.attempts[':id'].assessment.$get({ param: { id: String(id) } });
+  return parseResponse(res, getAssessmentResponseSchema);
+}
+
+export async function submitAssessment(
+  id: number,
+  answers: { questionId: string; value: string }[],
+): Promise<SubmitAssessmentResponse> {
+  const res = await client.api.attempts[':id'].assessment.$post({
+    param: { id: String(id) },
+    json: { answers },
+  });
+  return parseResponse(res, submitAssessmentResponseSchema);
+}
+
+export async function listChatMessages(id: number): Promise<ListChatMessagesResponse> {
+  const res = await client.api.attempts[':id'].chat.$get({ param: { id: String(id) } });
+  return parseResponse(res, listChatMessagesResponseSchema);
+}
+
+export async function postChatMessage(id: number, message: string): Promise<PostChatResponse> {
+  const res = await client.api.attempts[':id'].chat.$post({
+    param: { id: String(id) },
+    json: { message },
+  });
+  return parseResponse(res, postChatResponseSchema);
+}
+
+export async function advanceAttempt(id: number): Promise<AdvanceAttemptResponse> {
+  const res = await client.api.attempts[':id'].advance.$post({ param: { id: String(id) } });
+  return parseResponse(res, advanceAttemptResponseSchema);
+}
+
+export async function uploadSubmission(id: number, file: File): Promise<UploadSubmissionResponse> {
+  const res = await client.api.attempts[':id'].submission.$post({
+    param: { id: String(id) },
+    form: { file },
+  });
+  return parseResponse(res, uploadSubmissionResponseSchema);
+}
+
+export async function getSubmission(id: number): Promise<GetSubmissionResponse> {
+  const res = await client.api.attempts[':id'].submission.$get({ param: { id: String(id) } });
+  return parseResponse(res, getSubmissionResponseSchema);
+}
+
+export async function getSubmissionFile(
+  id: number,
+  path: string,
+): Promise<GetSubmissionFileResponse> {
+  const res = await client.api.attempts[':id'].submission.file.$get({
+    param: { id: String(id) },
+    query: { path },
+  });
+  return parseResponse(res, getSubmissionFileResponseSchema);
+}
+
+export async function listQa(id: number): Promise<ListQaResponse> {
+  const res = await client.api.attempts[':id'].qa.$get({ param: { id: String(id) } });
+  return parseResponse(res, listQaResponseSchema);
+}
+
+export async function answerQa(id: number, answer: string): Promise<AnswerQaResponse> {
+  const res = await client.api.attempts[':id'].qa.answer.$post({
+    param: { id: String(id) },
+    json: { answer },
+  });
+  return parseResponse(res, answerQaResponseSchema);
+}
+
+export async function getReport(id: number): Promise<GetReportResponse> {
+  const res = await client.api.attempts[':id'].report.$get({ param: { id: String(id) } });
+  return parseResponse(res, getReportResponseSchema);
+}
+
+export async function listReportMessages(id: number): Promise<ListReportMessagesResponse> {
+  const res = await client.api.attempts[':id'].report.questions.$get({
+    param: { id: String(id) },
+  });
+  return parseResponse(res, listReportMessagesResponseSchema);
+}
+
+export async function askReportQuestion(
+  id: number,
+  question: string,
+  quotedText: string | null,
+): Promise<AskReportResponse> {
+  const res = await client.api.attempts[':id'].report.questions.$post({
+    param: { id: String(id) },
+    json: { question, quotedText },
+  });
+  return parseResponse(res, askReportResponseSchema);
 }

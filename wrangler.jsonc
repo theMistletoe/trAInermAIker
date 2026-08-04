@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "cloudflare-templete",
+  "name": "trainermaiker",
   "main": "src/server/index.ts",
   "compatibility_date": "2026-05-08",
   "compatibility_flags": ["nodejs_compat"],
@@ -9,24 +9,30 @@
     "not_found_handling": "single-page-application",
     "binding": "ASSETS"
   },
-  // Deliberately NO `ai` binding here: Workers AI has no local simulation, so a
-  // declared binding makes `vite dev` (and the vitest workers pool) demand an
-  // authenticated remote proxy session at STARTUP — breaking CI/E2E and any
-  // unauthenticated dev loop. The summarizer instead reaches Workers AI over
-  // REST when CLOUDFLARE_ACCOUNT_ID / CLOUDFLARE_AI_TOKEN are set (.dev.vars
-  // locally, `wrangler secret` in prod) and degrades to a deterministic stub
-  // otherwise. See src/server/lib/summarizer.ts.
+  // No `ai` binding: Workers AI is not used. The challenge AI agents call
+  // OpenAI over REST (see src/server/lib/ai.ts) and degrade to deterministic
+  // stubs without a key.
   "observability": {
     "enabled": true
   },
+  // Unlike Workers AI, R2 has a full local simulation (miniflare), so declaring
+  // the binding does NOT break the unauthenticated dev/test loop. Production
+  // bucket is created idempotently by deploy.yml (`r2 bucket info || create`).
+  "r2_buckets": [
+    {
+      "binding": "SUBMISSIONS",
+      "bucket_name": "trainermaiker-submissions"
+    }
+  ],
   "d1_databases": [
     {
       "binding": "DB",
+      // Historical name from before the product rename — it identifies the
+      // already-provisioned production database, so it must not change.
       "database_name": "cloudflare_templete",
-      // Placeholder id. Local dev / miniflare / db:migrate:local all key off the
-      // binding + database_name, so this works as-is without a Cloudflare
-      // account. Replace with the real id from `npm run db:create:remote` only
-      // when setting up production (see README).
+      // Production database id (already provisioned via `db:create:remote`).
+      // Local dev / miniflare / db:migrate:local key off the binding +
+      // database_name only, so this value is inert locally.
       "database_id": "defbeb88-a0e2-4bc9-94de-bc54622dae36",
       "migrations_dir": "migrations"
     }

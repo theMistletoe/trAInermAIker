@@ -52,7 +52,9 @@ jobs:
   e2e:
     name: Playwright E2E
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # Real-AI E2E: the challenge flow makes 10-20 GPT-5.6 calls (some 60-90s);
+    # with retries: 2 the worst case is 3 attempts of the 15-min spec budget.
+    timeout-minutes: 50
     needs: verify
     steps:
       - name: Checkout
@@ -73,19 +75,18 @@ jobs:
       - name: Apply D1 local migrations
         run: npm run db:migrate:local
 
-      # リポジトリの Secrets に CLOUDFLARE_ACCOUNT_ID / CLOUDFLARE_AI_TOKEN が
-      # あれば .dev.vars に書き出し、E2E の要約生成を実 Workers AI で回す
-      # （実態に近い検証を優先する方針）。無ければ決定的スタブで動く。
-      - name: Enable real Workers AI summaries (when secrets are set)
+      # Repo policy: E2E runs against the real OpenAI API (no stubs) when the
+      # secret is available. Without it (e.g. fork PRs) the app's deterministic
+      # stub fallback keeps the suite meaningful and green.
+      - name: Enable real AI for E2E (when secret is set)
         env:
-          CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CF_AI_TOKEN: ${{ secrets.CLOUDFLARE_AI_TOKEN }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
-          if [ -n "$CF_ACCOUNT_ID" ] && [ -n "$CF_AI_TOKEN" ]; then
-            printf 'CLOUDFLARE_ACCOUNT_ID=%s\nCLOUDFLARE_AI_TOKEN=%s\n' "$CF_ACCOUNT_ID" "$CF_AI_TOKEN" > .dev.vars
-            echo "Real Workers AI enabled for E2E"
+          if [ -n "$OPENAI_API_KEY" ]; then
+            printf 'OPENAI_API_KEY=%s\n' "$OPENAI_API_KEY" >> .dev.vars
+            echo "Real AI enabled for E2E."
           else
-            echo "Cloudflare AI secrets not set — E2E uses the deterministic stub"
+            echo "OPENAI_API_KEY secret not set; E2E uses the deterministic stub fallback."
           fi
 
       - name: Run Playwright tests

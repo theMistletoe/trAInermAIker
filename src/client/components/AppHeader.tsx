@@ -43,9 +43,9 @@ export function AppHeader() {
 
   return (
     <header className="sticky top-0 z-10 mb-8 border-b bg-background/80 backdrop-blur">
-      <div className="mx-auto flex h-14 w-full max-w-2xl items-center justify-between px-4">
+      <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between px-4">
         <Link to="/" data-testid="brand-home" className="font-semibold tracking-tight">
-          cloudflare-templete
+          trAInermAIker
         </Link>
         <div ref={menuRef} className="relative">
           <Button
@@ -68,16 +68,6 @@ export function AppHeader() {
                 <p className="px-3 py-2 text-sm text-muted-foreground">読み込み中…</p>
               ) : session ? (
                 <ul className="flex flex-col">
-                  <li>
-                    <Link
-                      to="/mine"
-                      data-testid="nav-my-notes"
-                      className="block rounded-md px-3 py-2 text-sm hover:bg-accent"
-                      onClick={() => setOpen(false)}
-                    >
-                      自分のノート
-                    </Link>
-                  </li>
                   <li>
                     <button
                       type="button"

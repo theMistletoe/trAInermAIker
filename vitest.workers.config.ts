@@ -13,8 +13,10 @@ export default defineConfig(async () => {
         wrangler: { configPath: './wrangler.jsonc' },
         miniflare: {
           d1Databases: ['DB'],
+          r2Buckets: ['SUBMISSIONS'],
           compatibilityFlags: ['nodejs_compat'],
-          // AI_STUB keeps summarization deterministic and offline in tests.
+          // AI_STUB keeps every AI agent deterministic and offline in tests —
+          // it must win even when .dev.vars provides real API keys.
           bindings: { TEST_MIGRATIONS: migrations, AI_STUB: '1' },
         },
       }),
