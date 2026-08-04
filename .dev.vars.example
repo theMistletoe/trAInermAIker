@@ -8,13 +8,6 @@
 BETTER_AUTH_SECRET=generate-with-openssl-rand-base64-32-at-least-32-chars
 BETTER_AUTH_URL=http://localhost:5173
 
-# Workers AI (note summarization). Optional: without these the summarizer uses
-# a deterministic stub (whitespace cleanup + truncation) — the app still works
-# end-to-end. Create an API token with the "Workers AI (Read)" permission.
-# Production: set both via `wrangler secret put ...`.
-CLOUDFLARE_ACCOUNT_ID=your-cloudflare-account-id
-CLOUDFLARE_AI_TOKEN=your-workers-ai-api-token
-
 # OpenAI (challenge AI agents: assessment / requirement chat / QA / report).
 # Optional: without a key every agent degrades to a deterministic stub — the
 # app still works end-to-end. Production: `wrangler secret put OPENAI_API_KEY`.

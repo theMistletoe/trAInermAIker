@@ -72,7 +72,5 @@ export default defineConfig({
         url: BASE_URL,
         reuseExistingServer: !process.env.CI,
         timeout: 60_000,
-        // ポーリング既定 500ms を E2E 向けに短縮し、反映待ちを速くする。
-        env: { VITE_POLL_INTERVAL_MS: '100' },
       },
 });

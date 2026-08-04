@@ -16,9 +16,5 @@ export default defineConfig({
     environment: 'jsdom',
     globals: false,
     setupFiles: ['./tests/client/setup.ts'],
-    env: {
-      // Shrink polling so client tests use real timers + waitFor.
-      VITE_POLL_INTERVAL_MS: '20',
-    },
   },
 });

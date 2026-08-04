@@ -9,13 +9,9 @@
     "not_found_handling": "single-page-application",
     "binding": "ASSETS"
   },
-  // Deliberately NO `ai` binding here: Workers AI has no local simulation, so a
-  // declared binding makes `vite dev` (and the vitest workers pool) demand an
-  // authenticated remote proxy session at STARTUP — breaking CI/E2E and any
-  // unauthenticated dev loop. The summarizer instead reaches Workers AI over
-  // REST when CLOUDFLARE_ACCOUNT_ID / CLOUDFLARE_AI_TOKEN are set (.dev.vars
-  // locally, `wrangler secret` in prod) and degrades to a deterministic stub
-  // otherwise. See src/server/lib/summarizer.ts.
+  // No `ai` binding: Workers AI is not used. The challenge AI agents call
+  // OpenAI over REST (see src/server/lib/ai.ts) and degrade to deterministic
+  // stubs without a key.
   "observability": {
     "enabled": true
   },

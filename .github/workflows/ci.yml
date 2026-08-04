@@ -73,21 +73,6 @@ jobs:
       - name: Apply D1 local migrations
         run: npm run db:migrate:local
 
-      # リポジトリの Secrets に CLOUDFLARE_ACCOUNT_ID / CLOUDFLARE_AI_TOKEN が
-      # あれば .dev.vars に書き出し、E2E の要約生成を実 Workers AI で回す
-      # （実態に近い検証を優先する方針）。無ければ決定的スタブで動く。
-      - name: Enable real Workers AI summaries (when secrets are set)
-        env:
-          CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CF_AI_TOKEN: ${{ secrets.CLOUDFLARE_AI_TOKEN }}
-        run: |
-          if [ -n "$CF_ACCOUNT_ID" ] && [ -n "$CF_AI_TOKEN" ]; then
-            printf 'CLOUDFLARE_ACCOUNT_ID=%s\nCLOUDFLARE_AI_TOKEN=%s\n' "$CF_ACCOUNT_ID" "$CF_AI_TOKEN" > .dev.vars
-            echo "Real Workers AI enabled for E2E"
-          else
-            echo "Cloudflare AI secrets not set — E2E uses the deterministic stub"
-          fi
-
       - name: Run Playwright tests
         run: npm run test:e2e:evidence
         env:

@@ -4,7 +4,6 @@ import { createAuth } from './auth';
 import { errorBody } from './lib/errors';
 import { attemptsRoute } from './routes/attempts';
 import { challengesRoute } from './routes/challenges';
-import { notesRoute } from './routes/notes';
 import type { Bindings } from './types';
 
 // Chain .route() calls so `typeof app` retains the schema metadata that the
@@ -12,7 +11,6 @@ import type { Bindings } from './types';
 // `notFound` and `onError` are intentionally applied as statements below so
 // their return types don't leak into AppType.
 const app = new Hono<{ Bindings: Bindings }>()
-  .route('/api/notes', notesRoute)
   .route('/api/challenges', challengesRoute)
   .route('/api/attempts', attemptsRoute);
 
