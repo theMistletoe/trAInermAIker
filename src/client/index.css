@@ -1,6 +1,8 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+@plugin "@tailwindcss/typography";
+
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
@@ -36,6 +38,14 @@
   --sidebar-accent-foreground: oklch(0.248 0.046 252.12);
   --sidebar-border: oklch(0.875 0.017 247.94);
   --sidebar-ring: oklch(0.55 0.065 252.12);
+  --hl-keyword: oklch(0.45 0.17 305);
+  --hl-string: oklch(0.48 0.1 145);
+  --hl-comment: oklch(0.55 0.02 255);
+  --hl-number: oklch(0.52 0.11 60);
+  --hl-title: oklch(0.47 0.12 245);
+  --hl-attr: oklch(0.5 0.13 25);
+  --hl-built-in: oklch(0.47 0.09 195);
+  --hl-literal: oklch(0.44 0.14 330);
 }
 
 .dark {
@@ -70,6 +80,14 @@
   --sidebar-accent-foreground: oklch(0.965 0.006 247.86);
   --sidebar-border: oklch(1 0 0 / 12%);
   --sidebar-ring: oklch(0.77 0.078 232.4);
+  --hl-keyword: oklch(0.76 0.13 305);
+  --hl-string: oklch(0.78 0.11 145);
+  --hl-comment: oklch(0.64 0.02 255);
+  --hl-number: oklch(0.78 0.1 60);
+  --hl-title: oklch(0.75 0.1 245);
+  --hl-attr: oklch(0.74 0.11 25);
+  --hl-built-in: oklch(0.78 0.09 195);
+  --hl-literal: oklch(0.75 0.12 330);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -105,6 +123,14 @@
     --sidebar-accent-foreground: oklch(0.965 0.006 247.86);
     --sidebar-border: oklch(1 0 0 / 12%);
     --sidebar-ring: oklch(0.77 0.078 232.4);
+    --hl-keyword: oklch(0.76 0.13 305);
+    --hl-string: oklch(0.78 0.11 145);
+    --hl-comment: oklch(0.64 0.02 255);
+    --hl-number: oklch(0.78 0.1 60);
+    --hl-title: oklch(0.75 0.1 245);
+    --hl-attr: oklch(0.74 0.11 25);
+    --hl-built-in: oklch(0.78 0.09 195);
+    --hl-literal: oklch(0.75 0.12 330);
   }
 }
 
@@ -160,4 +186,61 @@
       linear-gradient(135deg, color-mix(in oklch, var(--muted) 72%, transparent), transparent 42%);
     font-feature-settings: "palt";
   }
+}
+
+/* prose をテーマトークンに追従させる（prose-invert 不要: 変数側が dark で切り替わる） */
+.prose {
+  --tw-prose-body: var(--foreground);
+  --tw-prose-headings: var(--foreground);
+  --tw-prose-lead: var(--muted-foreground);
+  --tw-prose-links: var(--primary);
+  --tw-prose-bold: var(--foreground);
+  --tw-prose-counters: var(--muted-foreground);
+  --tw-prose-bullets: var(--muted-foreground);
+  --tw-prose-hr: var(--border);
+  --tw-prose-quotes: var(--muted-foreground);
+  --tw-prose-quote-borders: var(--border);
+  --tw-prose-captions: var(--muted-foreground);
+  --tw-prose-code: var(--foreground);
+  --tw-prose-pre-code: var(--foreground);
+  --tw-prose-pre-bg: var(--muted);
+  --tw-prose-th-borders: var(--border);
+  --tw-prose-td-borders: var(--border);
+}
+
+/* highlight.js スコープ → --hl-* トークン。背景はコンポーネント側の bg-muted に任せる */
+.hljs-keyword,
+.hljs-selector-tag {
+  color: var(--hl-keyword);
+}
+.hljs-string,
+.hljs-regexp {
+  color: var(--hl-string);
+}
+.hljs-comment,
+.hljs-quote {
+  color: var(--hl-comment);
+}
+.hljs-number,
+.hljs-symbol {
+  color: var(--hl-number);
+}
+.hljs-title,
+.hljs-section,
+.hljs-function .hljs-title {
+  color: var(--hl-title);
+}
+.hljs-attr,
+.hljs-attribute,
+.hljs-variable {
+  color: var(--hl-attr);
+}
+.hljs-built_in,
+.hljs-type,
+.hljs-class {
+  color: var(--hl-built-in);
+}
+.hljs-literal,
+.hljs-boolean {
+  color: var(--hl-literal);
 }

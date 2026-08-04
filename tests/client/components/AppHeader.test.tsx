@@ -49,7 +49,7 @@ describe('AppHeader', () => {
     expect(screen.queryByTestId('nav-logout')).not.toBeInTheDocument();
   });
 
-  it('ログイン済みのときメニューに自分のノートとログアウトを表示する', async () => {
+  it('ログイン済みのときメニューにログアウトのみを表示する', async () => {
     mswServer.use(http.get('/api/auth/get-session', () => HttpResponse.json(signedInSession)));
     const user = userEvent.setup();
     renderWithProviders(<AppHeader />);
@@ -57,8 +57,8 @@ describe('AppHeader', () => {
 
     await user.click(screen.getByTestId('nav-menu'));
     expect(await screen.findByTestId('nav-logout')).toBeInTheDocument();
-    expect(screen.getByTestId('nav-my-notes')).toBeInTheDocument();
     expect(screen.queryByTestId('nav-login')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('nav-signup')).not.toBeInTheDocument();
   });
 
   it('メニュー外クリックと Escape でパネルが閉じる', async () => {
