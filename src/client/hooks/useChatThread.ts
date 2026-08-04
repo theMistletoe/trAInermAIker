@@ -48,6 +48,7 @@ export function useChatThread(deps: {
     };
   }, []);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: loadCount is the manual reload trigger
   useEffect(() => {
     let alive = true;
     setLoading(true);

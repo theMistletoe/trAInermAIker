@@ -21,7 +21,7 @@
     "test:e2e:report": "playwright show-report",
     "test:e2e:clean": "rm -rf playwright-report test-results",
     "gen:types": "wrangler types",
-    "typecheck": "npm run gen:types && tsc -p tsconfig.client.json --noEmit && tsc -p tsconfig.server.json --noEmit && tsc -p tsconfig.test.json --noEmit && tsc -p tsconfig.client.test.json --noEmit",
+    "typecheck": "npm run gen:types && tsc -p tsconfig.client.json --noEmit && tsc -p tsconfig.server.json --noEmit && tsc -p tsconfig.test.json --noEmit && tsc -p tsconfig.client.test.json --noEmit && tsc -p tsconfig.e2e.json --noEmit",
     "lint": "biome lint .",
     "format": "biome format --write .",
     "check": "biome check .",

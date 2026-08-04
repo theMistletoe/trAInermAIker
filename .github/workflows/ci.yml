@@ -52,7 +52,8 @@ jobs:
   e2e:
     name: Playwright E2E
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # Real-AI E2E: the challenge flow makes 10-20 GPT-5.6 calls (some 60-90s).
+    timeout-minutes: 35
     needs: verify
     steps:
       - name: Checkout
@@ -72,6 +73,20 @@ jobs:
 
       - name: Apply D1 local migrations
         run: npm run db:migrate:local
+
+      # Repo policy: E2E runs against the real OpenAI API (no stubs) when the
+      # secret is available. Without it (e.g. fork PRs) the app's deterministic
+      # stub fallback keeps the suite meaningful and green.
+      - name: Enable real AI for E2E (when secret is set)
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          if [ -n "$OPENAI_API_KEY" ]; then
+            printf 'OPENAI_API_KEY=%s\n' "$OPENAI_API_KEY" >> .dev.vars
+            echo "Real AI enabled for E2E."
+          else
+            echo "OPENAI_API_KEY secret not set; E2E uses the deterministic stub fallback."
+          fi
 
       - name: Run Playwright tests
         run: npm run test:e2e:evidence

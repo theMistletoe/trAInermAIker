@@ -18,6 +18,7 @@ export function useAttempt(attemptId: number): {
   const [state, setState] = useState<AttemptState>({ status: 'loading' });
   const [fetchCount, setFetchCount] = useState(0);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: fetchCount is the manual refresh trigger
   useEffect(() => {
     let alive = true;
     setState({ status: 'loading' });

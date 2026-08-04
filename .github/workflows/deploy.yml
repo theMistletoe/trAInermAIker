@@ -67,3 +67,19 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: deploy
+
+      # Armed by setting the PRODUCTION_URL repository variable (e.g.
+      # https://cloudflare-templete.<account>.workers.dev). 200 on the public
+      # challenge list proves the Worker booted and routes are mounted.
+      - name: Post-deploy smoke check
+        if: ${{ vars.PRODUCTION_URL != '' }}
+        env:
+          PRODUCTION_URL: ${{ vars.PRODUCTION_URL }}
+        run: |
+          curl -fsS -o /dev/null "$PRODUCTION_URL/"
+          code=$(curl -s -o /dev/null -w '%{http_code}' "$PRODUCTION_URL/api/challenges")
+          if [ "$code" != "200" ]; then
+            echo "unexpected /api/challenges status: $code"
+            exit 1
+          fi
+          echo "smoke ok"

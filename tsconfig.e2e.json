@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // Playwright specs run in Node but page.evaluate callbacks are typed
+    // against the browser DOM — hence DOM libs here and the exclusion of
+    // tests/e2e from tsconfig.test.json (workers-types would collide).
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": ["node"],
+    "noEmit": true
+  },
+  "include": ["tests/e2e/**/*.ts", "tests/fixtures/**/*.ts", "playwright.config.ts"]
+}

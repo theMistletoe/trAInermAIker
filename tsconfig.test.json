@@ -14,5 +14,5 @@
     "src/shared/**/*.ts",
     "vitest.config.ts"
   ],
-  "exclude": ["tests/client/**", "tests/helpers/**"]
+  "exclude": ["tests/client/**", "tests/helpers/**", "tests/e2e/**"]
 }

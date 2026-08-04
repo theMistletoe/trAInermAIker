@@ -13,7 +13,7 @@ export default defineConfig({
   // 上でもアサーションは衝突しない。ローカルでは並列実行で速度を稼ぎ、CI は D1 local
   // の同時アクセス挙動が未検証なので安全側に倒して workers: 1 のままにしておく。
   fullyParallel: true,
-  workers: process.env.CI ? 1 : undefined,
+  ...(process.env.CI ? { workers: 1 } : {}),
   // CI 上での `.only` 取り残しを防ぐ
   forbidOnly: !!process.env.CI,
   // CI のフレーキー耐性（`trace`/`video` は retain-on-failure のままなので、
@@ -65,12 +65,15 @@ export default defineConfig({
     },
   ],
 
-  webServer: process.env.E2E_BASE_URL
-    ? undefined
+  // Conditional spread (not `webServer: undefined`) — exactOptionalPropertyTypes.
+  ...(process.env.E2E_BASE_URL
+    ? {}
     : {
-        command: 'npm run dev',
-        url: BASE_URL,
-        reuseExistingServer: !process.env.CI,
-        timeout: 60_000,
-      },
+        webServer: {
+          command: 'npm run dev',
+          url: BASE_URL,
+          reuseExistingServer: !process.env.CI,
+          timeout: 60_000,
+        },
+      }),
 });
