@@ -209,7 +209,10 @@ export const submitQaBodySchema = z.object({
           .pipe(z.string().min(1, 'INVALID_BODY').max(CHAT_MESSAGE_MAX, 'INVALID_BODY')),
       }),
     )
-    .min(1, 'INVALID_BODY'),
+    .min(1, 'INVALID_BODY')
+    .refine((arr) => new Set(arr.map((a) => a.questionId)).size === arr.length, {
+      message: 'INVALID_BODY',
+    }),
 });
 
 export const listQaResponseSchema = z.discriminatedUnion('status', [
