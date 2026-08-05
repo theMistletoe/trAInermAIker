@@ -13,12 +13,12 @@ paths:
   - assessment: `assessment-form`, `assessment-question`, `assessment-choice-<questionId>-<choiceId>`, `assessment-answer-input`, `assessment-submit`
   - chat: `chat-message`, `chat-input`, `chat-send`, `chat-pending`, `chat-empty`
   - submission: `submission-file-input`, `submission-upload-button`, `submission-file-item`, `submission-file-name`, `submission-file-content`, `submission-file-truncated`, `submission-files-empty`
-  - qa: `qa-completed`, `qa-generating`, `qa-generate-failed`, `qa-retry-button` (QA UI reuses the `chat-*` testids)
+  - qa: `qa-form`, `qa-question`, `qa-answer-input`, `qa-submit`, `qa-completed`, `qa-generating`, `qa-generate-failed`, `qa-retry-button`
   - report: `report-view`, `report-generating`, `report-generate-failed`, `report-retry-button`, `report-quote`, `report-quote-clear`, `report-ask-button`
   - nav/auth: `brand-home`, `nav-signup`, `nav-login`, `nav-logout`, `nav-menu`, `nav-menu-panel`, `signup-name`, `signup-email`, `signup-password`, `signup-submit`, `login-email`, `login-password`, `login-submit`
 - **Real-AI policy**: E2E runs against real GPT-5.6 when `OPENAI_API_KEY` is available (local: `.dev.vars`; CI: GitHub Secret). Without a key the app's deterministic stub fallback kicks in — specs must pass in both modes.
   - AI-dependent assertions check **presence/non-emptiness only** — never exact AI text.
   - Use generous timeouts: a single AI turn can take 30–90s, so pass explicit `expect(...).toBeVisible({ timeout: ... })` values well above the 5s default. `test.setTimeout(900_000)` is used in the challenge-flow spec **only** — don't spread it to cheap specs. Best-effort fallback clicks must pass a short `{ timeout }` and swallow failures — a bare `.click()` inherits the full test timeout and can eat the whole budget retrying.
-  - QA question count is dynamic (3–10): use the **answer-loop pattern** — keep answering the currently visible question until `qa-completed` appears, never hard-code a count.
+  - QA question count is dynamic (3–10): fill every `qa-answer-input` then click `qa-submit` — never hard-code a count.
 - Signup emails (and any user-visible content asserted on) must be unique per run (`Date.now()` suffix) — D1 state is shared across tests and runs.
 - Run a single test: `npx playwright test tests/e2e/challenge-flow.spec.ts -g "<title>"`.

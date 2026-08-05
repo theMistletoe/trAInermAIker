@@ -67,13 +67,12 @@ describe('AttemptWorkspacePage', () => {
     expect(await screen.findAllByTestId('submission-file-item')).toHaveLength(2);
   });
 
-  it('qa フェーズで質問がチャットとして表示される', async () => {
+  it('qa フェーズで質問フォームが表示される', async () => {
     overridePhase('qa');
     renderPage();
 
-    expect(
-      await screen.findByText('この実装方法を選んだ理由を教えてください。'),
-    ).toBeInTheDocument();
+    expect(await screen.findByTestId('qa-form')).toBeInTheDocument();
+    expect(screen.getByText(/この実装方法を選んだ理由を教えてください。/)).toBeInTheDocument();
     expect(screen.getByTestId('phase-step-qa')).toHaveAttribute('data-state', 'current');
   });
 

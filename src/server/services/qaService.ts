@@ -1,9 +1,14 @@
-import type { ListQaResponse, QaQuestion } from '../../shared/schemas';
+import type { ListQaResponse, QaQuestion, SubmitQaResponse } from '../../shared/schemas';
 import { findAttemptGenerationForUser } from '../db/attempts';
-import { answerQaQuestion, countQaQuestions, findFirstUnanswered, listQaQuestions } from '../db/qa';
+import { answerQaQuestionsBatch, listQaQuestions, listUnansweredQaQuestions } from '../db/qa';
 import type { AiDeps } from '../lib/ai';
 import type { Bindings } from '../types';
-import { AttemptNotFoundError, assertPhase, getAttemptForUser } from './attemptService';
+import {
+  AttemptNotFoundError,
+  assertPhase,
+  getAttemptForUser,
+  QaIncompleteError,
+} from './attemptService';
 import { enqueueHeavyGeneration, isGenerationPendingStale } from './generationService';
 
 export class QaCompletedError extends Error {
@@ -27,12 +32,12 @@ export async function getQaState(
     return { status: 'ready', questions: [], done: false };
   }
 
-  const counts = await countQaQuestions(env.DB, id);
-  if (counts.total > 0) {
+  const questions = await listQaQuestions(env.DB, id);
+  if (questions.length > 0) {
     return {
       status: 'ready',
-      questions: await listQaQuestions(env.DB, id),
-      done: counts.unanswered === 0,
+      questions,
+      done: questions.every((q) => q.answer !== null),
     };
   }
 
@@ -58,25 +63,48 @@ export async function getQaState(
   return { status: 'ready', questions: [], done: false };
 }
 
-export async function answerQuestion(
+function validateAnswers(
+  unanswered: QaQuestion[],
+  answers: { questionId: number; answer: string }[],
+): void {
+  if (unanswered.length === 0) throw new QaCompletedError();
+  const unansweredIds = new Set(unanswered.map((q) => q.id));
+  const seen = new Set<number>();
+  for (const a of answers) {
+    if (!unansweredIds.has(a.questionId) || seen.has(a.questionId)) {
+      throw new QaIncompleteError();
+    }
+    seen.add(a.questionId);
+  }
+  if (seen.size !== unanswered.length) throw new QaIncompleteError();
+}
+
+export async function submitAnswers(
   db: D1Database,
   id: number,
   userId: string,
-  answer: string,
-): Promise<{ answered: QaQuestion; next: QaQuestion | null; remaining: number }> {
+  answers: { questionId: number; answer: string }[],
+): Promise<SubmitQaResponse> {
   const attempt = await getAttemptForUser(db, id, userId);
   assertPhase(attempt, 'qa');
-  const target = await findFirstUnanswered(db, id);
-  if (!target) throw new QaCompletedError();
+  const unanswered = await listUnansweredQaQuestions(db, id);
+  validateAnswers(unanswered, answers);
+
   const now = new Date().toISOString();
-  // CAS on "still unanswered": a concurrent answer for the same question loses.
-  if (!(await answerQaQuestion(db, target.id, answer, now))) throw new QaCompletedError();
-  const answered = (await listQaQuestions(db, id)).find((q) => q.id === target.id) ?? {
-    ...target,
-    answer,
-    answeredAt: now,
-  };
-  const next = await findFirstUnanswered(db, id);
-  const { unanswered } = await countQaQuestions(db, id);
-  return { answered, next, remaining: unanswered };
+  const ok = await answerQaQuestionsBatch(
+    db,
+    id,
+    answers.map((a) => ({ id: a.questionId, answer: a.answer })),
+    now,
+  );
+  if (!ok) {
+    // Concurrent submit / regenerate may have changed the unanswered set between
+    // validate and write. Distinguish "already done" from "still open but drifted".
+    const stillOpen = await listUnansweredQaQuestions(db, id);
+    if (stillOpen.length === 0) throw new QaCompletedError();
+    throw new QaIncompleteError();
+  }
+
+  const questions = await listQaQuestions(db, id);
+  return { questions, done: true };
 }

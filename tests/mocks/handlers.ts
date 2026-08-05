@@ -1,7 +1,6 @@
 import { HttpResponse, http } from 'msw';
 import {
   advanceAttemptResponseSchema,
-  answerQaResponseSchema,
   askReportResponseSchema,
   createAttemptResponseSchema,
   getAssessmentResponseSchema,
@@ -18,6 +17,7 @@ import {
   postChatResponseSchema,
   regenerateResponseSchema,
   submitAssessmentResponseSchema,
+  submitQaResponseSchema,
   uploadSubmissionResponseSchema,
 } from '../../src/shared/schemas';
 import {
@@ -173,21 +173,22 @@ export const defaultHandlers = [
     ),
   ),
 
-  http.post('/api/attempts/:id/qa/answer', async ({ request }) => {
-    const body = (await request.json()) as { answer: string };
+  http.post('/api/attempts/:id/qa/answers', async ({ request }) => {
+    const body = (await request.json()) as {
+      answers: { questionId: number; answer: string }[];
+    };
+    const now = '2026-01-01T00:00:00.000Z';
     return HttpResponse.json(
-      answerQaResponseSchema.parse({
-        answered: buildQaQuestion({
-          answer: body.answer,
-          answeredAt: '2026-01-01T00:00:00.000Z',
-        }),
-        next: buildQaQuestion({
-          id: 2,
-          questionNo: 2,
-          category: 'learning_point',
-          question: 'この課題で新しく学んだことは何ですか？',
-        }),
-        remaining: 2,
+      submitQaResponseSchema.parse({
+        questions: body.answers.map((a, i) =>
+          buildQaQuestion({
+            id: a.questionId,
+            questionNo: i + 1,
+            answer: a.answer,
+            answeredAt: now,
+          }),
+        ),
+        done: true,
       }),
     );
   }),

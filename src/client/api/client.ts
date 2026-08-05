@@ -3,11 +3,9 @@ import type { z } from 'zod';
 import type { AppType } from '../../server';
 import {
   type AdvanceAttemptResponse,
-  type AnswerQaResponse,
   type ApiErrorCode,
   type AskReportResponse,
   advanceAttemptResponseSchema,
-  answerQaResponseSchema,
   apiErrorBodySchema,
   askReportResponseSchema,
   type CreateAttemptResponse,
@@ -39,7 +37,9 @@ import {
   type RegenerateResponse,
   regenerateResponseSchema,
   type SubmitAssessmentResponse,
+  type SubmitQaResponse,
   submitAssessmentResponseSchema,
+  submitQaResponseSchema,
   type UploadSubmissionResponse,
   uploadSubmissionResponseSchema,
 } from '../../shared/schemas';
@@ -203,12 +203,15 @@ export async function listQa(id: number): Promise<ListQaResponse> {
   return parseResponse(res, listQaResponseSchema);
 }
 
-export async function answerQa(id: number, answer: string): Promise<AnswerQaResponse> {
-  const res = await client.api.attempts[':id'].qa.answer.$post({
+export async function submitQaAnswers(
+  id: number,
+  answers: { questionId: number; answer: string }[],
+): Promise<SubmitQaResponse> {
+  const res = await client.api.attempts[':id'].qa.answers.$post({
     param: { id: String(id) },
-    json: { answer },
+    json: { answers },
   });
-  return parseResponse(res, answerQaResponseSchema);
+  return parseResponse(res, submitQaResponseSchema);
 }
 
 export async function getReport(id: number): Promise<GetReportResponse> {

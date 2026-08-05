@@ -148,7 +148,7 @@ cp .dev.vars.example .dev.vars   # OPENAI_API_KEY を設定（BETTER_AUTH_* も�
 | GET | `/api/attempts/:id/submission` | 必要 | `SUBMISSION_NOT_FOUND` 404 |
 | GET | `/api/attempts/:id/submission/file` | 必要 | `SUBMISSION_NOT_FOUND` / `SUBMISSION_FILE_NOT_FOUND` 404 |
 | GET | `/api/attempts/:id/qa` | 必要 | `ATTEMPT_NOT_FOUND` 404 |
-| POST | `/api/attempts/:id/qa/answer` | 必要 | `INVALID_PHASE` 409 / `QA_COMPLETED` 409 |
+| POST | `/api/attempts/:id/qa/answers` | 必要 | `INVALID_PHASE` 409 / `QA_INCOMPLETE` 409 / `QA_COMPLETED` 409 |
 | GET | `/api/attempts/:id/report` | 必要 | `REPORT_NOT_FOUND` 404（report フェーズ前） |
 | GET | `/api/attempts/:id/report/questions` | 必要 | `ATTEMPT_NOT_FOUND` 404 |
 | POST | `/api/attempts/:id/report/questions` | 必要 | `INVALID_PHASE` 409 / `CHAT_LIMIT_EXCEEDED` 409 |

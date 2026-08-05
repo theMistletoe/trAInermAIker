@@ -21,9 +21,6 @@ const SINGLE_CHOICE_QUESTION_IDS = [
   'serverless-experience',
   'security-iam',
 ] as const;
-/** QA の想定質問数の上限。これを超えても完了しなければテストは失敗させる。 */
-const QA_ANSWER_CAP = 15;
-
 async function signup(page: Page, email: string): Promise<void> {
   await page.goto('/signup');
   await page.getByTestId('signup-name').fill('E2E Flow User');
@@ -100,45 +97,34 @@ test('チャレンジ挑戦のフルジャーニー（実AI）', async ({ page }
     await captureStep(page, '06-submission-uploaded');
   });
 
-  await test.step('QA フェーズへ進み最初の質問が出る', async () => {
+  await test.step('QA フェーズへ進み質問フォームが出る', async () => {
     // QA 質問生成は最も重い AI 呼び出し。
     await attempt.advanceButton.click();
-    await expect(attempt.assistantMessages.first()).toBeVisible({ timeout: 240_000 });
+    await expect(attempt.qaForm).toBeVisible({ timeout: 240_000 });
+    await expect(attempt.qaAnswerInputs.first()).toBeVisible();
     await expect(attempt.step('qa')).toHaveAttribute('data-state', 'current');
-    await captureStep(page, '07-qa-first-question');
+    await captureStep(page, '07-qa-form');
   });
 
   await test.step('QA に全問回答してレポート生成まで到達する', async () => {
-    // 質問数は AI 次第で動的。各周回の冒頭で「先へ進んだ状態」か「次の回答を
-    // 入力できる状態」のどちらかになるまで待ち、進んでいればループを抜ける。
+    // 質問数は AI 次第で動的。全入力欄に埋めて一括送信する。
+    await attempt.submitQaForm(
+      (i) =>
+        `回答${i + 1}: まだ理解が浅いため、要点だけ述べると設計時に意識したのはコストと最小権限です。`,
+    );
+    await captureStep(page, '08-qa-submitted');
+
     // qa-completed → 自動 advance → report-generating → report-markdown の
-    // どの割り込み地点で観測しても成立するようにする。
-    for (let i = 0; i < QA_ANSWER_CAP; i++) {
-      const settledOrReady = attempt.reportMarkdown
-        .or(attempt.reportGenerating)
-        .or(attempt.qaCompleted)
-        .or(attempt.chatInputEnabled)
-        .first();
-      await expect(settledOrReady).toBeVisible({ timeout: 120_000 });
-      const moved =
-        (await attempt.reportMarkdown.isVisible().catch(() => false)) ||
-        (await attempt.reportGenerating.isVisible().catch(() => false)) ||
-        (await attempt.qaCompleted.isVisible().catch(() => false));
-      if (moved) break;
-      const marker = `回答${i + 1}:`;
-      await attempt.sendChat(
-        `${marker} まだ理解が浅いため、要点だけ述べると設計時に意識したのはコストと最小権限です。`,
-      );
-      // 回答のラウンドトリップは、自分の発言が確定 user バブルとして現れた時点で完了。
-      await expect(attempt.userMessages.filter({ hasText: marker })).toBeVisible({
-        timeout: 120_000,
-      });
-      await captureStep(page, `08-qa-answer-${i + 1}`);
-    }
+    // どの割り込み地点でも、最終的にレポート本文が出ることを待つ。
     // 自動 advance が中断された場合（qa-completed のまま enabled な手動ボタンが
     // 残る）だけのフォールバック。auto-advance 進行中はボタンが disabled
     // （「進行中…」）なので触らない。best-effort: 失敗は握りつぶして本命の
     // report-markdown 待ちに任せる。
+    const settled = attempt.reportMarkdown
+      .or(attempt.reportGenerating)
+      .or(attempt.qaCompleted)
+      .first();
+    await expect(settled).toBeVisible({ timeout: 120_000 });
     if (
       !(await attempt.reportMarkdown.isVisible().catch(() => false)) &&
       !(await attempt.reportGenerating.isVisible().catch(() => false)) &&
