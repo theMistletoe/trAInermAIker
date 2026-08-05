@@ -43,8 +43,8 @@ describe('assessmentフェーズ中のガード', () => {
   });
 
   it('Q&A回答は409 INVALID_PHASEを返す', async () => {
-    const res = await postJson(`/api/attempts/${attemptId}/qa/answer`, cookie, {
-      answer: 'まだQ&Aフェーズではありません。',
+    const res = await postJson(`/api/attempts/${attemptId}/qa/answers`, cookie, {
+      answers: [{ questionId: 1, answer: 'まだQ&Aフェーズではありません。' }],
     });
     expect(res.status).toBe(409);
     expect(((await res.json()) as { error: string }).error).toBe('INVALID_PHASE');

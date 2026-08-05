@@ -1,7 +1,6 @@
 import { HttpResponse, http } from 'msw';
 import {
   advanceAttemptResponseSchema,
-  answerQaResponseSchema,
   askReportResponseSchema,
   createAttemptResponseSchema,
   getAssessmentResponseSchema,
@@ -18,6 +17,7 @@ import {
   postChatResponseSchema,
   regenerateResponseSchema,
   submitAssessmentResponseSchema,
+  submitQaResponseSchema,
   uploadSubmissionResponseSchema,
 } from '../../src/shared/schemas';
 import {
@@ -173,21 +173,23 @@ export const defaultHandlers = [
     ),
   ),
 
-  http.post('/api/attempts/:id/qa/answer', async ({ request }) => {
-    const body = (await request.json()) as { answer: string };
+  http.post('/api/attempts/:id/qa/answers', async ({ request }) => {
+    const body = (await request.json()) as {
+      answers: { questionId: number; answer: string }[];
+    };
+    const now = '2026-01-01T00:00:00.000Z';
+    // Reflect submitted answers onto the base question list (matching server semantics:
+    // return ALL questions with stable questionNo, updated answers applied).
+    const baseQuestions = [buildQaQuestion()];
+    const answerMap = new Map(body.answers.map((a) => [a.questionId, a.answer]));
     return HttpResponse.json(
-      answerQaResponseSchema.parse({
-        answered: buildQaQuestion({
-          answer: body.answer,
-          answeredAt: '2026-01-01T00:00:00.000Z',
-        }),
-        next: buildQaQuestion({
-          id: 2,
-          questionNo: 2,
-          category: 'learning_point',
-          question: 'この課題で新しく学んだことは何ですか？',
-        }),
-        remaining: 2,
+      submitQaResponseSchema.parse({
+        questions: baseQuestions.map((q) => ({
+          ...q,
+          answer: answerMap.has(q.id) ? (answerMap.get(q.id) ?? null) : q.answer,
+          answeredAt: answerMap.has(q.id) ? now : q.answeredAt,
+        })),
+        done: true,
       }),
     );
   }),

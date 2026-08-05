@@ -3,8 +3,6 @@ import { Hono } from 'hono';
 import { ZIP_MAX_BYTES } from '../../shared/constants';
 import {
   advanceAttemptResponseSchema,
-  answerQaBodySchema,
-  answerQaResponseSchema,
   askReportBodySchema,
   askReportResponseSchema,
   attemptIdParamSchema,
@@ -27,6 +25,8 @@ import {
   submissionFormSchema,
   submitAssessmentBodySchema,
   submitAssessmentResponseSchema,
+  submitQaBodySchema,
+  submitQaResponseSchema,
   uploadSubmissionResponseSchema,
 } from '../../shared/schemas';
 import { getSessionUser } from '../auth';
@@ -50,7 +50,7 @@ import {
 } from '../services/attemptService';
 import { ChallengeNotFoundError } from '../services/challengeService';
 import { ChatLimitExceededError, listMessages, postMessage } from '../services/chatService';
-import { answerQuestion, getQaState, QaCompletedError } from '../services/qaService';
+import { getQaState, QaCompletedError, submitAnswers } from '../services/qaService';
 import { regenerateHeavyGeneration } from '../services/regenerateService';
 import {
   askQuestion,
@@ -405,25 +405,25 @@ export const attemptsRoute = new Hono<{ Bindings: Bindings }>()
     },
   )
   .post(
-    '/:id/qa/answer',
+    '/:id/qa/answers',
     zValidator('param', attemptIdParamSchema, (result, c) => {
       if (!result.success) return c.json(errorBody('INVALID_ID'), 400);
     }),
-    zValidator('json', answerQaBodySchema, (result, c) => {
+    zValidator('json', submitQaBodySchema, (result, c) => {
       if (!result.success) return c.json(errorBody('INVALID_BODY'), 400);
     }),
     async (c) => {
       const user = await getSessionUser(c.env, c.req.raw.headers);
       if (!user) return c.json(errorBody('UNAUTHORIZED'), 401);
       const { id } = c.req.valid('param');
-      const { answer } = c.req.valid('json');
+      const { answers } = c.req.valid('json');
       try {
-        const { answered, next, remaining } = await answerQuestion(c.env.DB, id, user.id, answer);
-        return c.json(answerQaResponseSchema.parse({ answered, next, remaining }), 200);
+        const result = await submitAnswers(c.env.DB, id, user.id, answers);
+        return c.json(submitQaResponseSchema.parse(result), 200);
       } catch (e) {
         const mapped = mapAttemptError(e);
         if (mapped) return c.json(errorBody(mapped.code), mapped.status);
-        console.error('answerQuestion failed', e);
+        console.error('submitAnswers failed', e);
         return c.json(errorBody('INTERNAL_ERROR'), 500);
       }
     },

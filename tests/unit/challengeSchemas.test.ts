@@ -1,6 +1,5 @@
 import { ASSESSMENT_ANSWER_MAX, CHAT_MESSAGE_MAX } from '@shared/constants';
 import {
-  answerQaBodySchema,
   apiErrorBodySchema,
   apiErrorCodeEnum,
   askReportBodySchema,
@@ -14,6 +13,7 @@ import {
   submissionFileQuerySchema,
   submissionFormSchema,
   submitAssessmentBodySchema,
+  submitQaBodySchema,
 } from '@shared/schemas';
 import { describe, expect, it } from 'vitest';
 
@@ -138,25 +138,39 @@ describe('要件チャット投稿リクエストのボディスキーマ (postC
   });
 });
 
-describe('QA回答リクエストのボディスキーマ (answerQaBodySchema)', () => {
+describe('QA一括回答リクエストのボディスキーマ (submitQaBodySchema)', () => {
   it('answerをトリムした値で受け入れる', () => {
-    const r = answerQaBodySchema.safeParse({ answer: '  こう考えました  ' });
+    const r = submitQaBodySchema.safeParse({
+      answers: [{ questionId: 1, answer: '  こう考えました  ' }],
+    });
     expect(r.success).toBe(true);
-    expect(r.success && r.data.answer).toBe('こう考えました');
+    expect(r.success && r.data.answers[0]?.answer).toBe('こう考えました');
   });
 
   it('トリム後に空になるanswerを拒否する', () => {
-    expect(answerQaBodySchema.safeParse({ answer: ' \n\t ' }).success).toBe(false);
+    expect(
+      submitQaBodySchema.safeParse({
+        answers: [{ questionId: 1, answer: ' \n\t ' }],
+      }).success,
+    ).toBe(false);
   });
 
   it('上限を超えるanswerを拒否する', () => {
-    const r = answerQaBodySchema.safeParse({ answer: 'あ'.repeat(CHAT_MESSAGE_MAX + 1) });
+    const r = submitQaBodySchema.safeParse({
+      answers: [{ questionId: 1, answer: 'あ'.repeat(CHAT_MESSAGE_MAX + 1) }],
+    });
     expect(r.success).toBe(false);
   });
 
   it('ちょうど上限文字数のanswerを受け入れる', () => {
-    const r = answerQaBodySchema.safeParse({ answer: 'あ'.repeat(CHAT_MESSAGE_MAX) });
+    const r = submitQaBodySchema.safeParse({
+      answers: [{ questionId: 1, answer: 'あ'.repeat(CHAT_MESSAGE_MAX) }],
+    });
     expect(r.success).toBe(true);
+  });
+
+  it('空のanswersを拒否する', () => {
+    expect(submitQaBodySchema.safeParse({ answers: [] }).success).toBe(false);
   });
 });
 

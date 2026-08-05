@@ -2,10 +2,15 @@ import { MESSAGES } from '@shared/messages';
 import type { Attempt, QaQuestion } from '@shared/schemas';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { advanceAttempt, answerQa, listQa, regenerateGeneration } from '@/api/client';
-import { ChatPanel } from '@/components/ChatPanel';
+import {
+  ApiError,
+  advanceAttempt,
+  listQa,
+  regenerateGeneration,
+  submitQaAnswers,
+} from '@/api/client';
+import { QaForm } from '@/components/QaForm';
 import { Button } from '@/components/ui/button';
-import type { ChatItem } from '@/hooks/useChatThread';
 
 interface QaPhaseProps {
   attempt: Attempt;
@@ -21,34 +26,10 @@ type QaState =
 
 const POLL_MS = 1500;
 
-// 質問 → assistant 発言、回答済みなら直後に user 発言、の順でチャット風に並べる。
-const toItems = (questions: QaQuestion[]): ChatItem[] =>
-  questions.flatMap((q) => {
-    const items: ChatItem[] = [
-      {
-        key: `q-${q.id}`,
-        role: 'assistant',
-        content: q.question,
-        quotedText: null,
-        pending: false,
-      },
-    ];
-    if (q.answer !== null) {
-      items.push({
-        key: `a-${q.id}`,
-        role: 'user',
-        content: q.answer,
-        quotedText: null,
-        pending: false,
-      });
-    }
-    return items;
-  });
-
 export function QaPhase({ attempt, onAttempt }: QaPhaseProps) {
   const [state, setState] = useState<QaState>({ status: 'loading' });
   const [pollEpoch, setPollEpoch] = useState(0);
-  const [answering, setAnswering] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [advancing, setAdvancing] = useState(false);
   const [advanceFailed, setAdvanceFailed] = useState(false);
   const [retrying, setRetrying] = useState(false);
@@ -133,25 +114,29 @@ export function QaPhase({ attempt, onAttempt }: QaPhaseProps) {
     void advance();
   }, [done, advance]);
 
-  const handleAnswer = async (answer: string): Promise<boolean> => {
-    if (answering) return false;
-    setAnswering(true);
+  const handleSubmit = async (answers: { questionId: number; answer: string }[]) => {
+    if (submitting) return;
+    setSubmitting(true);
     try {
-      const { answered, next } = await answerQa(attempt.id, answer);
-      setState((prev) => {
-        if (prev.status !== 'ready') return prev;
-        const questions = prev.questions.map((q) => (q.id === answered.id ? answered : q));
-        if (next !== null && !questions.some((q) => q.id === next.id)) {
-          questions.push(next);
+      const res = await submitQaAnswers(attempt.id, answers);
+      setState({ status: 'ready', questions: res.questions, done: res.done });
+    } catch (e) {
+      // Another tab / double-submit may have finished or drifted the unanswered
+      // set — resync so the form does not stay stuck on a stale open state.
+      if (e instanceof ApiError && (e.code === 'QA_COMPLETED' || e.code === 'QA_INCOMPLETE')) {
+        try {
+          const res = await listQa(attempt.id);
+          if (res.status === 'ready') {
+            setState({ status: 'ready', questions: res.questions, done: res.done });
+            if (res.done) return;
+          }
+        } catch {
+          // fall through to toast
         }
-        return { status: 'ready', questions, done: next === null };
-      });
-      return true;
-    } catch {
-      toast.error(MESSAGES.qa.answerFailed);
-      return false;
+      }
+      toast.error(MESSAGES.qa.submitFailed);
     } finally {
-      setAnswering(false);
+      setSubmitting(false);
     }
   };
 
@@ -205,16 +190,9 @@ export function QaPhase({ attempt, onAttempt }: QaPhaseProps) {
   return (
     <section className="flex flex-col gap-4">
       <p className="text-sm text-muted-foreground">{MESSAGES.qa.lead}</p>
-      <ChatPanel
-        messages={toItems(state.questions)}
-        loading={false}
-        loadFailed={false}
-        sending={answering}
-        onSend={handleAnswer}
-        placeholder={MESSAGES.qa.answerPlaceholder}
-        emptyText={MESSAGES.qa.lead}
-        disabled={done}
-      />
+      {!done && (
+        <QaForm questions={state.questions} submitting={submitting} onSubmit={handleSubmit} />
+      )}
       {done && (
         <p data-testid="qa-completed" className="text-sm text-muted-foreground">
           {MESSAGES.qa.completed}

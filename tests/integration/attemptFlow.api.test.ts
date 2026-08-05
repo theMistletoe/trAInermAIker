@@ -30,6 +30,7 @@ type AttemptJson = {
 type MessageJson = { id: number; role: string; content: string };
 
 type QaQuestionJson = {
+  id: number;
   questionNo: number;
   category: string;
   question: string;
@@ -193,31 +194,51 @@ describe('受講フローの一気通貫ウォーク (attempts API)', () => {
     expect(qa.done).toBe(false);
   });
 
-  it('3問すべて回答すると完了し、追加回答は409 QA_COMPLETEDになる', async () => {
-    const first = await postJson(`/api/attempts/${attemptId}/qa/answer`, { answer: '回答1' });
-    expect(first.status).toBe(200);
-    const firstJson = (await first.json()) as {
-      answered: QaQuestionJson;
-      next: QaQuestionJson | null;
-      remaining: number;
+  it('全問を一括回答すると完了し、再提出は409 QA_COMPLETEDになる', async () => {
+    const qaRes = await get(`/api/attempts/${attemptId}/qa`);
+    const qa = (await qaRes.json()) as { questions: QaQuestionJson[] };
+    const answers = qa.questions.map((q, i) => ({
+      questionId: q.id,
+      answer: `回答${i + 1}`,
+    }));
+
+    const incomplete = await postJson(`/api/attempts/${attemptId}/qa/answers`, {
+      answers: answers.slice(0, 1),
+    });
+    expect(incomplete.status).toBe(409);
+    expect(((await incomplete.json()) as { error: string }).error).toBe('QA_INCOMPLETE');
+
+    // Simulate a prior partial write (legacy / interrupted path): answer Q1 in DB,
+    // then submit only the remaining unanswered set.
+    const firstId = qa.questions[0]!.id;
+    await env.DB.prepare('UPDATE qa_questions SET answer = ?2, answered_at = ?3 WHERE id = ?1')
+      .bind(firstId, '先行回答', '2026-01-01T00:00:00.000Z')
+      .run();
+
+    const withAnswered = await postJson(`/api/attempts/${attemptId}/qa/answers`, { answers });
+    expect(withAnswered.status).toBe(409);
+    expect(((await withAnswered.json()) as { error: string }).error).toBe('QA_INCOMPLETE');
+
+    const remaining = answers.slice(1);
+    const submitted = await postJson(`/api/attempts/${attemptId}/qa/answers`, {
+      answers: remaining,
+    });
+    expect(submitted.status).toBe(200);
+    const body = (await submitted.json()) as {
+      questions: QaQuestionJson[];
+      done: boolean;
     };
-    expect(firstJson.answered.answer).toBe('回答1');
-    expect(firstJson.next).not.toBeNull();
-    expect(firstJson.remaining).toBe(2);
+    expect(body.done).toBe(true);
+    expect(body.questions.every((q) => q.answer !== null)).toBe(true);
 
-    await postJson(`/api/attempts/${attemptId}/qa/answer`, { answer: '回答2' });
-    const last = await postJson(`/api/attempts/${attemptId}/qa/answer`, { answer: '回答3' });
-    expect(last.status).toBe(200);
-    const lastJson = (await last.json()) as { next: QaQuestionJson | null; remaining: number };
-    expect(lastJson.next).toBeNull();
-    expect(lastJson.remaining).toBe(0);
-
-    const extra = await postJson(`/api/attempts/${attemptId}/qa/answer`, { answer: '余分な回答' });
+    const extra = await postJson(`/api/attempts/${attemptId}/qa/answers`, {
+      answers: remaining,
+    });
     expect(extra.status).toBe(409);
     expect(((await extra.json()) as { error: string }).error).toBe('QA_COMPLETED');
 
-    const qaRes = await get(`/api/attempts/${attemptId}/qa`);
-    expect(((await qaRes.json()) as { status: string; done: boolean }).done).toBe(true);
+    const listed = await get(`/api/attempts/${attemptId}/qa`);
+    expect(((await listed.json()) as { status: string; done: boolean }).done).toBe(true);
   });
 
   it('QA完了後のadvanceでレポートが生成され、引用付き質問に回答が返る', async () => {

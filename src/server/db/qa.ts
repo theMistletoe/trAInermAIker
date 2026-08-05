@@ -50,33 +50,55 @@ export async function listQaQuestions(db: D1Database, attemptId: number): Promis
   return results.map(toQaQuestion);
 }
 
-export async function findFirstUnanswered(
+export async function listUnansweredQaQuestions(
   db: D1Database,
   attemptId: number,
-): Promise<QaQuestion | null> {
-  const row = await db
+): Promise<QaQuestion[]> {
+  const { results } = await db
     .prepare(
-      `SELECT ${QA_COLUMNS} FROM qa_questions WHERE attempt_id = ?1 AND answer IS NULL ORDER BY question_no LIMIT 1`,
+      `SELECT ${QA_COLUMNS} FROM qa_questions WHERE attempt_id = ?1 AND answer IS NULL ORDER BY question_no ASC`,
     )
     .bind(attemptId)
-    .first<QaQuestionRow>();
-  return row ? toQaQuestion(row) : null;
+    .all<QaQuestionRow>();
+  return results.map(toQaQuestion);
 }
 
-/** Answers are write-once: the IS NULL guard makes a double-answer a no-op (false). */
-export async function answerQaQuestion(
+/**
+ * Write-once batch answer. The unanswered-count guard makes the UPDATE a no-op
+ * (0 changes) if any target is already answered or the set drifted — so we never
+ * partially commit a form submit under concurrency.
+ */
+export async function answerQaQuestionsBatch(
   db: D1Database,
-  id: number,
-  answer: string,
+  attemptId: number,
+  answers: { id: number; answer: string }[],
   now: string,
 ): Promise<boolean> {
+  if (answers.length === 0) return false;
+  const caseSql = answers.map(() => 'WHEN ? THEN ?').join(' ');
+  const inSql = answers.map(() => '?').join(', ');
+  const binds: (string | number)[] = [];
+  for (const a of answers) {
+    binds.push(a.id, a.answer);
+  }
+  binds.push(now, attemptId);
+  for (const a of answers) {
+    binds.push(a.id);
+  }
+  binds.push(attemptId, answers.length);
+
   const res = await db
     .prepare(
-      'UPDATE qa_questions SET answer = ?2, answered_at = ?3 WHERE id = ?1 AND answer IS NULL',
+      `UPDATE qa_questions
+       SET answer = CASE id ${caseSql} END, answered_at = ?
+       WHERE attempt_id = ?
+         AND id IN (${inSql})
+         AND answer IS NULL
+         AND (SELECT COUNT(*) FROM qa_questions WHERE attempt_id = ? AND answer IS NULL) = ?`,
     )
-    .bind(id, answer, now)
+    .bind(...binds)
     .run();
-  return res.meta.changes > 0;
+  return res.meta.changes === answers.length;
 }
 
 export async function countQaQuestions(

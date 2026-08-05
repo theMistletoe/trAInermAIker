@@ -17,12 +17,12 @@ export class AttemptPage {
   readonly freeTextInput: Locator;
   readonly assessmentSubmit: Locator;
 
-  // chat（requirement_chat / qa / report チャットで共通の ChatPanel）
+  // chat（requirement_chat / report チャットで共通の ChatPanel）
   readonly messages: Locator;
   readonly assistantMessages: Locator;
   readonly userMessages: Locator;
   readonly chatInput: Locator;
-  /** disabled でない chat 入力欄。QA 完了後は入力欄が disabled になるため区別する。 */
+  /** disabled でない chat 入力欄。 */
   readonly chatInputEnabled: Locator;
   readonly chatSend: Locator;
   readonly chatPending: Locator;
@@ -34,6 +34,9 @@ export class AttemptPage {
   readonly guide: Locator;
 
   // qa
+  readonly qaForm: Locator;
+  readonly qaAnswerInputs: Locator;
+  readonly qaSubmit: Locator;
   readonly qaCompleted: Locator;
 
   // report
@@ -66,6 +69,9 @@ export class AttemptPage {
     this.fileItems = page.getByTestId('submission-file-item');
     this.guide = page.getByTestId('submission-guide');
 
+    this.qaForm = page.getByTestId('qa-form');
+    this.qaAnswerInputs = page.getByTestId('qa-answer-input');
+    this.qaSubmit = page.getByTestId('qa-submit');
     this.qaCompleted = page.getByTestId('qa-completed');
 
     this.reportGenerating = page.getByTestId('report-generating');
@@ -91,5 +97,15 @@ export class AttemptPage {
   async sendChat(text: string): Promise<void> {
     await this.chatInput.fill(text);
     await this.chatSend.click();
+  }
+
+  /** 表示中の全 QA 回答欄に text を入れて一括送信する。 */
+  async submitQaForm(answerFor: (index: number) => string): Promise<void> {
+    const inputs = this.qaAnswerInputs;
+    const count = await inputs.count();
+    for (let i = 0; i < count; i++) {
+      await inputs.nth(i).fill(answerFor(i));
+    }
+    await this.qaSubmit.click();
   }
 }

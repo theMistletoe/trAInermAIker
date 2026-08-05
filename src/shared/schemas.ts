@@ -198,11 +198,21 @@ export const qaQuestionSchema = z.object({
   answeredAt: z.string().nullable(),
 });
 
-export const answerQaBodySchema = z.object({
-  answer: z
-    .string()
-    .transform((v) => v.trim())
-    .pipe(z.string().min(1, 'INVALID_BODY').max(CHAT_MESSAGE_MAX, 'INVALID_BODY')),
+export const submitQaBodySchema = z.object({
+  answers: z
+    .array(
+      z.object({
+        questionId: z.number().int().positive(),
+        answer: z
+          .string()
+          .transform((v) => v.trim())
+          .pipe(z.string().min(1, 'INVALID_BODY').max(CHAT_MESSAGE_MAX, 'INVALID_BODY')),
+      }),
+    )
+    .min(1, 'INVALID_BODY')
+    .refine((arr) => new Set(arr.map((a) => a.questionId)).size === arr.length, {
+      message: 'INVALID_BODY',
+    }),
 });
 
 export const listQaResponseSchema = z.discriminatedUnion('status', [
@@ -217,10 +227,9 @@ export const listQaResponseSchema = z.discriminatedUnion('status', [
     message: z.string().optional(),
   }),
 ]);
-export const answerQaResponseSchema = z.object({
-  answered: qaQuestionSchema,
-  next: qaQuestionSchema.nullable(),
-  remaining: z.number().int().nonnegative(),
+export const submitQaResponseSchema = z.object({
+  questions: z.array(qaQuestionSchema),
+  done: z.literal(true),
 });
 
 // =========================================================================
@@ -351,7 +360,7 @@ export type GetSubmissionFileResponse = z.infer<typeof getSubmissionFileResponse
 export type QaCategory = z.infer<typeof qaCategoryEnum>;
 export type QaQuestion = z.infer<typeof qaQuestionSchema>;
 export type ListQaResponse = z.infer<typeof listQaResponseSchema>;
-export type AnswerQaResponse = z.infer<typeof answerQaResponseSchema>;
+export type SubmitQaResponse = z.infer<typeof submitQaResponseSchema>;
 
 export type Report = z.infer<typeof reportSchema>;
 export type ReportMessage = z.infer<typeof reportMessageSchema>;
