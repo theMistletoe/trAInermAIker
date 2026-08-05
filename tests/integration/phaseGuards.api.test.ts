@@ -77,7 +77,8 @@ describe('assessmentフェーズ中のガード', () => {
   it('Q&A一覧は200で空（自己修復はqa/reportフェーズ以外では走らない）', async () => {
     const res = await fetchApp(`/api/attempts/${attemptId}/qa`, { headers: { cookie } });
     expect(res.status).toBe(200);
-    const json = (await res.json()) as { questions: unknown[]; done: boolean };
+    const json = (await res.json()) as { status: string; questions: unknown[]; done: boolean };
+    expect(json.status).toBe('ready');
     expect(json.questions).toEqual([]);
     expect(json.done).toBe(false);
   });

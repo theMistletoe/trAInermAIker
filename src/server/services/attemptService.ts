@@ -1,18 +1,23 @@
 import type { Attempt, AttemptPhase, ChatMessage } from '../../shared/schemas';
 import {
+  clearGenerationStatus,
   findAttemptByUserAndChallenge,
   findAttemptForUser,
   insertAttempt,
   listAttemptsByUser,
+  setGenerationFailed,
   updateAttemptPhase,
+  updateAttemptPhaseWithPendingGeneration,
 } from '../db/attempts';
-import { countUserChatMessages, listChatMessages } from '../db/chatMessages';
-import { countQaQuestions, insertQaQuestions, listQaQuestions } from '../db/qa';
-import { findReportByAttempt, insertReport } from '../db/reports';
-import { findSubmissionByAttempt, listSubmissionFileContents } from '../db/submissions';
-import { type ChatTurn, generateQaQuestions, generateReport } from '../lib/agent';
+import { countUserChatMessages } from '../db/chatMessages';
+import { countQaQuestions } from '../db/qa';
+import { findReportByAttempt } from '../db/reports';
+import { findSubmissionByAttempt } from '../db/submissions';
+import type { ChatTurn } from '../lib/agent';
 import type { AiDeps } from '../lib/ai';
+import type { Bindings } from '../types';
 import { getChallengeContentOrThrow } from './challengeService';
+import { startHeavyGeneration } from './generationService';
 
 export class AttemptNotFoundError extends Error {
   constructor(public id: number) {
@@ -53,7 +58,7 @@ export function assertPhase(attempt: Attempt, expected: AttemptPhase): void {
   if (attempt.phase !== expected) throw new InvalidPhaseError();
 }
 
-function toChatTurns(messages: ChatMessage[]): ChatTurn[] {
+export function toChatTurns(messages: ChatMessage[]): ChatTurn[] {
   return messages.map((m) => ({ role: m.role, content: m.content }));
 }
 
@@ -92,13 +97,34 @@ export async function listMyAttempts(db: D1Database, userId: string): Promise<At
   return listAttemptsByUser(db, userId);
 }
 
+async function launchHeavyGeneration(
+  env: Pick<Bindings, 'DB' | 'HEAVY_AI_WORKFLOW'>,
+  ai: AiDeps,
+  id: number,
+  kind: 'qa' | 'report',
+): Promise<void> {
+  // Phase CAS already set pending; sync stub clears it, live AI keeps it until Workflow finishes.
+  try {
+    await startHeavyGeneration(env, ai, id, kind);
+  } catch (e) {
+    console.error('advanceAttempt: failed to start heavy generation', e);
+    await setGenerationFailed(
+      env.DB,
+      id,
+      kind,
+      e instanceof Error ? e.message : 'failed to start generation',
+      new Date().toISOString(),
+    );
+  }
+}
+
 export async function advanceAttempt(
-  db: D1Database,
+  env: Pick<Bindings, 'DB' | 'HEAVY_AI_WORKFLOW'>,
   ai: AiDeps,
   id: number,
   userId: string,
 ): Promise<Attempt> {
-  const attempt = await getAttemptForUser(db, id, userId);
+  const attempt = await getAttemptForUser(env.DB, id, userId);
   const now = new Date().toISOString();
   switch (attempt.phase) {
     case 'assessment':
@@ -106,54 +132,40 @@ export async function advanceAttempt(
       // assessment advances only through submitAssessment; report is terminal.
       throw new InvalidPhaseError();
     case 'requirement_chat': {
-      if ((await countUserChatMessages(db, id)) < 1) throw new ChatRequiredError();
-      if (!(await updateAttemptPhase(db, id, 'requirement_chat', 'submission', now))) {
+      if ((await countUserChatMessages(env.DB, id)) < 1) throw new ChatRequiredError();
+      if (!(await updateAttemptPhase(env.DB, id, 'requirement_chat', 'submission', now))) {
         throw new InvalidPhaseError();
       }
       break;
     }
     case 'submission': {
-      const submission = await findSubmissionByAttempt(db, id);
+      const submission = await findSubmissionByAttempt(env.DB, id);
       if (!submission) throw new SubmissionRequiredError();
-      // CAS first so exactly one request becomes the QA generator. Generation
-      // never throws (stub fallback); a crash between the CAS and the insert
-      // leaves zero questions, which qaService.getQaState self-heals.
-      if (!(await updateAttemptPhase(db, id, 'submission', 'qa', now))) {
+      // CAS first so exactly one request owns QA generation. Live AI runs in a
+      // Workflow; stub path completes synchronously inside startHeavyGeneration.
+      if (
+        !(await updateAttemptPhaseWithPendingGeneration(env.DB, id, 'submission', 'qa', 'qa', now))
+      ) {
         throw new InvalidPhaseError();
       }
-      const questions = await generateQaQuestions(ai, {
-        challenge: getChallengeContentOrThrow(attempt.challengeId),
-        skillProfile: attempt.skillProfile,
-        chatHistory: toChatTurns(await listChatMessages(db, id)),
-        submissionFiles: await listSubmissionFileContents(db, submission.id),
-      });
-      await insertQaQuestions(db, id, questions, new Date().toISOString());
+      await launchHeavyGeneration(env, ai, id, 'qa');
       break;
     }
     case 'qa': {
-      const { total, unanswered } = await countQaQuestions(db, id);
+      const { total, unanswered } = await countQaQuestions(env.DB, id);
       if (total === 0 || unanswered > 0) throw new QaIncompleteError();
-      if (!(await updateAttemptPhase(db, id, 'qa', 'report', now))) {
+      if (
+        !(await updateAttemptPhaseWithPendingGeneration(env.DB, id, 'qa', 'report', 'report', now))
+      ) {
         throw new InvalidPhaseError();
       }
-      if (!(await findReportByAttempt(db, id))) {
-        const submission = await findSubmissionByAttempt(db, id);
-        const qaPairs = (await listQaQuestions(db, id)).map((q) => ({
-          category: q.category,
-          question: q.question,
-          answer: q.answer ?? '',
-        }));
-        const contentMd = await generateReport(ai, {
-          challenge: getChallengeContentOrThrow(attempt.challengeId),
-          skillProfile: attempt.skillProfile,
-          chatHistory: toChatTurns(await listChatMessages(db, id)),
-          submissionFiles: submission ? await listSubmissionFileContents(db, submission.id) : [],
-          qaPairs,
-        });
-        await insertReport(db, id, contentMd, new Date().toISOString());
+      if (!(await findReportByAttempt(env.DB, id))) {
+        await launchHeavyGeneration(env, ai, id, 'report');
+      } else {
+        await clearGenerationStatus(env.DB, id, new Date().toISOString());
       }
       break;
     }
   }
-  return getAttemptForUser(db, id, userId);
+  return getAttemptForUser(env.DB, id, userId);
 }

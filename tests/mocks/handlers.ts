@@ -16,6 +16,7 @@ import {
   listQaResponseSchema,
   listReportMessagesResponseSchema,
   postChatResponseSchema,
+  regenerateResponseSchema,
   submitAssessmentResponseSchema,
   uploadSubmissionResponseSchema,
 } from '../../src/shared/schemas';
@@ -163,7 +164,13 @@ export const defaultHandlers = [
   }),
 
   http.get('/api/attempts/:id/qa', () =>
-    HttpResponse.json(listQaResponseSchema.parse({ questions: [buildQaQuestion()], done: false })),
+    HttpResponse.json(
+      listQaResponseSchema.parse({
+        status: 'ready',
+        questions: [buildQaQuestion()],
+        done: false,
+      }),
+    ),
   ),
 
   http.post('/api/attempts/:id/qa/answer', async ({ request }) => {
@@ -186,7 +193,15 @@ export const defaultHandlers = [
   }),
 
   http.get('/api/attempts/:id/report', () =>
-    HttpResponse.json(getReportResponseSchema.parse({ report: buildReport() })),
+    HttpResponse.json(getReportResponseSchema.parse({ status: 'ready', report: buildReport() })),
+  ),
+
+  http.post('/api/attempts/:id/regenerate', ({ params }) =>
+    HttpResponse.json(
+      regenerateResponseSchema.parse({
+        attempt: buildAttempt({ id: Number(params.id) }),
+      }),
+    ),
   ),
 
   http.get('/api/attempts/:id/report/questions', () =>

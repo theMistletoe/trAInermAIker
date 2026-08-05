@@ -1,17 +1,10 @@
-import type { QaQuestion } from '../../shared/schemas';
-import { listChatMessages } from '../db/chatMessages';
-import {
-  answerQaQuestion,
-  countQaQuestions,
-  findFirstUnanswered,
-  insertQaQuestions,
-  listQaQuestions,
-} from '../db/qa';
-import { findSubmissionByAttempt, listSubmissionFileContents } from '../db/submissions';
-import { generateQaQuestions } from '../lib/agent';
+import type { ListQaResponse, QaQuestion } from '../../shared/schemas';
+import { findAttemptGenerationForUser } from '../db/attempts';
+import { answerQaQuestion, countQaQuestions, findFirstUnanswered, listQaQuestions } from '../db/qa';
 import type { AiDeps } from '../lib/ai';
-import { assertPhase, getAttemptForUser } from './attemptService';
-import { getChallengeContentOrThrow } from './challengeService';
+import type { Bindings } from '../types';
+import { AttemptNotFoundError, assertPhase, getAttemptForUser } from './attemptService';
+import { enqueueHeavyGeneration, isGenerationPendingStale } from './generationService';
 
 export class QaCompletedError extends Error {
   constructor() {
@@ -21,33 +14,48 @@ export class QaCompletedError extends Error {
 }
 
 export async function getQaState(
-  db: D1Database,
+  env: Pick<Bindings, 'DB' | 'HEAVY_AI_WORKFLOW'>,
   ai: AiDeps,
   id: number,
   userId: string,
-): Promise<{ questions: QaQuestion[]; done: boolean }> {
-  const attempt = await getAttemptForUser(db, id, userId);
-  let counts = await countQaQuestions(db, id);
-  if ((attempt.phase === 'qa' || attempt.phase === 'report') && counts.total === 0) {
-    // Self-heal: advanceAttempt CAS-claimed the qa phase but crashed before
-    // inserting questions. Generation never throws (stub fallback).
-    const submission = await findSubmissionByAttempt(db, id);
-    const questions = await generateQaQuestions(ai, {
-      challenge: getChallengeContentOrThrow(attempt.challengeId),
-      skillProfile: attempt.skillProfile,
-      chatHistory: (await listChatMessages(db, id)).map((m) => ({
-        role: m.role,
-        content: m.content,
-      })),
-      submissionFiles: submission ? await listSubmissionFileContents(db, submission.id) : [],
-    });
-    await insertQaQuestions(db, id, questions, new Date().toISOString());
-    counts = await countQaQuestions(db, id);
+): Promise<ListQaResponse> {
+  const row = await findAttemptGenerationForUser(env.DB, id, userId);
+  if (!row) throw new AttemptNotFoundError(id);
+  const { attempt, generation } = row;
+
+  if (attempt.phase !== 'qa' && attempt.phase !== 'report') {
+    return { status: 'ready', questions: [], done: false };
   }
-  return {
-    questions: await listQaQuestions(db, id),
-    done: counts.total > 0 && counts.unanswered === 0,
-  };
+
+  const counts = await countQaQuestions(env.DB, id);
+  if (counts.total > 0) {
+    return {
+      status: 'ready',
+      questions: await listQaQuestions(env.DB, id),
+      done: counts.unanswered === 0,
+    };
+  }
+
+  if (generation.status === 'failed' && generation.kind === 'qa') {
+    return { status: 'failed', message: generation.error ?? undefined };
+  }
+
+  if (generation.status === 'pending' && generation.kind === 'qa') {
+    // Sticky pending after a crash before Workflow.create — re-claim when stale.
+    if (isGenerationPendingStale(attempt.updatedAt)) {
+      await enqueueHeavyGeneration(env, ai, id, 'qa', { force: true });
+    }
+    return { status: 'generating' };
+  }
+
+  // Self-heal: phase is qa/report but no questions and no pending job (crash
+  // between CAS and enqueue, or legacy rows). Re-enqueue rather than sync AI.
+  if (attempt.phase === 'qa' || attempt.phase === 'report') {
+    await enqueueHeavyGeneration(env, ai, id, 'qa');
+    return { status: 'generating' };
+  }
+
+  return { status: 'ready', questions: [], done: false };
 }
 
 export async function answerQuestion(

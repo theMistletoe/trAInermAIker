@@ -13,8 +13,8 @@ paths:
   - assessment: `assessment-form`, `assessment-question`, `assessment-choice-<questionId>-<choiceId>`, `assessment-answer-input`, `assessment-submit`
   - chat: `chat-message`, `chat-input`, `chat-send`, `chat-pending`, `chat-empty`
   - submission: `submission-file-input`, `submission-upload-button`, `submission-file-item`, `submission-file-name`, `submission-file-content`, `submission-file-truncated`, `submission-files-empty`
-  - qa: `qa-completed` (QA UI reuses the `chat-*` testids)
-  - report: `report-view`, `report-generating`, `report-quote`, `report-quote-clear`, `report-ask-button`
+  - qa: `qa-completed`, `qa-generating`, `qa-generate-failed`, `qa-retry-button` (QA UI reuses the `chat-*` testids)
+  - report: `report-view`, `report-generating`, `report-generate-failed`, `report-retry-button`, `report-quote`, `report-quote-clear`, `report-ask-button`
   - nav/auth: `brand-home`, `nav-signup`, `nav-login`, `nav-logout`, `nav-menu`, `nav-menu-panel`, `signup-name`, `signup-email`, `signup-password`, `signup-submit`, `login-email`, `login-password`, `login-submit`
 - **Real-AI policy**: E2E runs against real GPT-5.6 when `OPENAI_API_KEY` is available (local: `.dev.vars`; CI: GitHub Secret). Without a key the app's deterministic stub fallback kicks in — specs must pass in both modes.
   - AI-dependent assertions check **presence/non-emptiness only** — never exact AI text.

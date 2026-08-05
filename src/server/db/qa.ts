@@ -92,3 +92,7 @@ export async function countQaQuestions(
     .first<{ total: number; unanswered: number }>();
   return row ?? { total: 0, unanswered: 0 };
 }
+
+export async function deleteQaQuestionsByAttempt(db: D1Database, attemptId: number): Promise<void> {
+  await db.prepare('DELETE FROM qa_questions WHERE attempt_id = ?1').bind(attemptId).run();
+}

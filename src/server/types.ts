@@ -3,6 +3,8 @@ export interface Bindings {
   ASSETS: Fetcher;
   // R2 bucket for submitted challenge deliverables (zip archives).
   SUBMISSIONS: R2Bucket;
+  // Durable Workflow for QA / report generation (long OpenAI calls + retries).
+  HEAVY_AI_WORKFLOW: Workflow;
   // OpenAI API for the challenge AI agents (assessment / requirement chat /
   // QA generation / report). Absent → deterministic stubs (see lib/ai.ts).
   OPENAI_API_KEY?: string;

@@ -53,7 +53,7 @@ flowchart LR
 
 ### AI シーム（`src/server/lib/ai.ts` + `agent.ts`）
 
-依存解決は `AI_STUB=1` → 強制スタブ / `OPENAI_API_KEY` あり → OpenAI Chat Completions REST（既定モデル `gpt-5.6`、会話系 30 秒・QA/レポート生成 90 秒のタイムアウト）/ キーなし → 決定的スタブ、の順。`agent.ts` の 5 ロール（理解度評価・要件チャット・QA 生成・レポート生成・レポート問答)は **AI 起因で決して throw しない** 契約で、タイムアウト・transport エラー・スキーマ不一致はすべてスタブに縮退します。要件チャットには秘匿仕様の逐語リーク検知ガード（`guardVerbatimLeak`）付き。
+依存解決は `AI_STUB=1` → 強制スタブ / `OPENAI_API_KEY` あり → OpenAI Chat Completions REST（既定モデル `gpt-5.6`、会話系 30 秒・heavy 300 秒）/ キーなし → 決定的スタブ、の順。対話系ロール（理解度評価・要件チャット・レポート問答）は AI 起因で throw せずスタブに縮退します。重いロール（QA 生成・レポート）は Cloudflare Workflows で非同期実行し、失敗はリトライのうえ `generation_status=failed`（stub を成功結果として永続化しない）。`AI_STUB`/キーなし時のみ決定的スタブを即時 insert。要件チャットには秘匿仕様の逐語リーク検知ガード（`guardVerbatimLeak`）付き。
 
 ### zip パイプライン（`src/server/lib/zip.ts` + `submissionService.ts`）
 

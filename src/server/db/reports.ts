@@ -80,3 +80,10 @@ export async function countUserReportMessages(db: D1Database, attemptId: number)
     .first<{ count: number }>();
   return row?.count ?? 0;
 }
+
+export async function deleteReportByAttempt(db: D1Database, attemptId: number): Promise<void> {
+  await db.batch([
+    db.prepare('DELETE FROM report_messages WHERE attempt_id = ?1').bind(attemptId),
+    db.prepare('DELETE FROM reports WHERE attempt_id = ?1').bind(attemptId),
+  ]);
+}

@@ -205,10 +205,18 @@ export const answerQaBodySchema = z.object({
     .pipe(z.string().min(1, 'INVALID_BODY').max(CHAT_MESSAGE_MAX, 'INVALID_BODY')),
 });
 
-export const listQaResponseSchema = z.object({
-  questions: z.array(qaQuestionSchema),
-  done: z.boolean(),
-});
+export const listQaResponseSchema = z.discriminatedUnion('status', [
+  z.object({ status: z.literal('generating') }),
+  z.object({
+    status: z.literal('ready'),
+    questions: z.array(qaQuestionSchema),
+    done: z.boolean(),
+  }),
+  z.object({
+    status: z.literal('failed'),
+    message: z.string().optional(),
+  }),
+]);
 export const answerQaResponseSchema = z.object({
   answered: qaQuestionSchema,
   next: qaQuestionSchema.nullable(),
@@ -241,7 +249,14 @@ export const askReportBodySchema = z.object({
   quotedText: z.string().max(CHAT_MESSAGE_MAX, 'INVALID_BODY').nullable(),
 });
 
-export const getReportResponseSchema = z.object({ report: reportSchema });
+export const getReportResponseSchema = z.discriminatedUnion('status', [
+  z.object({ status: z.literal('generating') }),
+  z.object({ status: z.literal('ready'), report: reportSchema }),
+  z.object({
+    status: z.literal('failed'),
+    message: z.string().optional(),
+  }),
+]);
 export const listReportMessagesResponseSchema = z.object({
   messages: z.array(reportMessageSchema),
 });
@@ -249,6 +264,12 @@ export const askReportResponseSchema = z.object({
   userMessage: reportMessageSchema,
   assistantMessage: reportMessageSchema,
 });
+
+// Re-run a failed (or previously stubbed) heavy AI generation for the current phase.
+export const regenerateBodySchema = z.object({
+  kind: z.enum(['qa', 'report']),
+});
+export const regenerateResponseSchema = z.object({ attempt: attemptSchema });
 
 // =========================================================================
 // Error schemas
@@ -282,6 +303,8 @@ export const apiErrorCodeEnum = z.enum([
   'INVALID_ZIP',
   'ZIP_TOO_LARGE',
   'REPORT_NOT_FOUND',
+  // Heavy AI (QA / report) generation exhausted retries without a usable result.
+  'GENERATION_FAILED',
 ]);
 
 export const apiErrorBodySchema = z.object({
@@ -335,6 +358,7 @@ export type ReportMessage = z.infer<typeof reportMessageSchema>;
 export type GetReportResponse = z.infer<typeof getReportResponseSchema>;
 export type ListReportMessagesResponse = z.infer<typeof listReportMessagesResponseSchema>;
 export type AskReportResponse = z.infer<typeof askReportResponseSchema>;
+export type RegenerateResponse = z.infer<typeof regenerateResponseSchema>;
 
 export type ApiErrorCode = z.infer<typeof apiErrorCodeEnum>;
 export type ApiErrorBody = z.infer<typeof apiErrorBodySchema>;

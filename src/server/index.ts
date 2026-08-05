@@ -6,6 +6,8 @@ import { attemptsRoute } from './routes/attempts';
 import { challengesRoute } from './routes/challenges';
 import type { Bindings } from './types';
 
+export { HeavyAiWorkflow } from './workflows/heavyAi';
+
 // Chain .route() calls so `typeof app` retains the schema metadata that the
 // Hono RPC client (`hc<AppType>`) uses to derive request/response types.
 // `notFound` and `onError` are intentionally applied as statements below so

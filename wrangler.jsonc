@@ -24,6 +24,13 @@
       "bucket_name": "trainermaiker-submissions"
     }
   ],
+  "workflows": [
+    {
+      "name": "trainermaiker-heavy-ai",
+      "binding": "HEAVY_AI_WORKFLOW",
+      "class_name": "HeavyAiWorkflow"
+    }
+  ],
   "d1_databases": [
     {
       "binding": "DB",

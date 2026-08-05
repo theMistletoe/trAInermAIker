@@ -36,6 +36,8 @@ import {
   listReportMessagesResponseSchema,
   type PostChatResponse,
   postChatResponseSchema,
+  type RegenerateResponse,
+  regenerateResponseSchema,
   type SubmitAssessmentResponse,
   submitAssessmentResponseSchema,
   type UploadSubmissionResponse,
@@ -159,6 +161,17 @@ export async function postChatMessage(id: number, message: string): Promise<Post
 export async function advanceAttempt(id: number): Promise<AdvanceAttemptResponse> {
   const res = await client.api.attempts[':id'].advance.$post({ param: { id: String(id) } });
   return parseResponse(res, advanceAttemptResponseSchema);
+}
+
+export async function regenerateGeneration(
+  id: number,
+  kind: 'qa' | 'report',
+): Promise<RegenerateResponse> {
+  const res = await client.api.attempts[':id'].regenerate.$post({
+    param: { id: String(id) },
+    json: { kind },
+  });
+  return parseResponse(res, regenerateResponseSchema);
 }
 
 export async function uploadSubmission(id: number, file: File): Promise<UploadSubmissionResponse> {

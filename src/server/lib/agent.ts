@@ -29,9 +29,11 @@ import {
   stubSkillProfile,
 } from './stubs';
 
-// AI agent roles. Contract: NEVER throw for AI reasons — every role degrades to
-// its deterministic stub on missing client, timeout, transport error, or
-// schema-invalid output. Callers can treat these as infallible.
+// AI agent roles.
+// - Chat / assessment / report Q&A: NEVER throw for AI reasons — degrade to the
+//   deterministic stub so interactive UX stays available offline.
+// - Heavy roles (QA gen / report): stub only when forceStub / no client. With a
+//   live client, failures throw so the Workflow can retry and surface `failed`.
 
 export interface ChatTurn {
   role: 'user' | 'assistant';
@@ -231,40 +233,38 @@ export async function generateQaQuestions(
 ): Promise<{ category: QaCategory; question: string }[]> {
   const { challenge, skillProfile, chatHistory, submissionFiles } = input;
   if (deps.forceStub || !deps.client) return stubQaQuestions();
-  try {
-    const envelope = await completeJsonWithRetry(
-      deps.client,
-      {
-        messages: buildQaGenMessages(
-          challenge,
-          skillProfile,
-          capHistory(chatHistory),
-          buildSubmissionContext(submissionFiles),
-        ),
-        jsonMode: true,
-        maxCompletionTokens: 4096,
-        timeoutMs: AI_TIMEOUT_HEAVY_MS,
-      },
-      qaEnvelopeSchema,
-    );
-    if (envelope) {
-      const valid: { category: QaCategory; question: string }[] = [];
-      for (const entry of envelope.questions) {
-        const parsed = qaEntrySchema.safeParse(entry);
-        if (parsed.success) valid.push(parsed.data);
-      }
-      const questions = valid.slice(0, QA_QUESTIONS_MAX);
-      for (const fallback of stubQaQuestions()) {
-        if (questions.length >= QA_QUESTIONS_MIN) break;
-        if (!questions.some((q) => q.question === fallback.question)) questions.push(fallback);
-      }
-      return questions;
-    }
-    console.error('generateQaQuestions: AI output failed schema validation, falling back to stub');
-  } catch (e) {
-    console.error('generateQaQuestions: AI call failed, falling back to stub', e);
+  const envelope = await completeJsonWithRetry(
+    deps.client,
+    {
+      messages: buildQaGenMessages(
+        challenge,
+        skillProfile,
+        capHistory(chatHistory),
+        buildSubmissionContext(submissionFiles),
+      ),
+      jsonMode: true,
+      maxCompletionTokens: 4096,
+      timeoutMs: AI_TIMEOUT_HEAVY_MS,
+    },
+    qaEnvelopeSchema,
+  );
+  if (!envelope) {
+    throw new Error('generateQaQuestions: AI output failed schema validation');
   }
-  return stubQaQuestions();
+  const valid: { category: QaCategory; question: string }[] = [];
+  for (const entry of envelope.questions) {
+    const parsed = qaEntrySchema.safeParse(entry);
+    if (parsed.success) valid.push(parsed.data);
+  }
+  const questions = valid.slice(0, QA_QUESTIONS_MAX);
+  // Live path must not pad with stubs — that used to persist a fake success.
+  // Offline/stub path returns stubQaQuestions() before this branch.
+  if (questions.length < QA_QUESTIONS_MIN) {
+    throw new Error(
+      `generateQaQuestions: insufficient valid questions (${questions.length} < ${QA_QUESTIONS_MIN})`,
+    );
+  }
+  return questions;
 }
 
 export async function generateReport(
@@ -278,26 +278,23 @@ export async function generateReport(
   },
 ): Promise<string> {
   const { challenge, skillProfile, chatHistory, submissionFiles, qaPairs } = input;
-  const fallback = () => stubReport({ textFileCount: submissionFiles.length, qaPairs });
-  if (deps.forceStub || !deps.client) return fallback();
-  try {
-    const raw = await deps.client.complete({
-      messages: buildReportMessages(
-        challenge,
-        skillProfile,
-        capHistory(chatHistory),
-        buildSubmissionContext(submissionFiles),
-        qaPairs,
-      ),
-      maxCompletionTokens: 8192,
-      timeoutMs: AI_TIMEOUT_HEAVY_MS,
-    });
-    const report = raw.trim();
-    return report || fallback();
-  } catch (e) {
-    console.error('generateReport: AI call failed, falling back to stub', e);
-    return fallback();
+  if (deps.forceStub || !deps.client) {
+    return stubReport({ textFileCount: submissionFiles.length, qaPairs });
   }
+  const raw = await deps.client.complete({
+    messages: buildReportMessages(
+      challenge,
+      skillProfile,
+      capHistory(chatHistory),
+      buildSubmissionContext(submissionFiles),
+      qaPairs,
+    ),
+    maxCompletionTokens: 8192,
+    timeoutMs: AI_TIMEOUT_HEAVY_MS,
+  });
+  const report = raw.trim();
+  if (!report) throw new Error('generateReport: empty AI output');
+  return report;
 }
 
 export async function answerReportQuestion(

@@ -149,6 +149,13 @@ test('チャレンジ挑戦のフルジャーニー（実AI）', async ({ page }
     // レポート生成（重い AI 呼び出し）の完了を待つ。
     await expect(attempt.reportMarkdown).toBeVisible({ timeout: 300_000 });
     await expect(attempt.reportMarkdown).toContainText(/\S/);
+    // Failed UI must not be mistaken for a ready report.
+    await expect(page.getByTestId('report-generate-failed')).toHaveCount(0);
+    // When the worker has a real key, timeout/errors must not persist the offline
+    // stub copy. Stub-mode (no key / AI_STUB) still uses that copy by design.
+    if (process.env.OPENAI_API_KEY) {
+      await expect(attempt.reportMarkdown).not.toContainText('AI未接続');
+    }
     await expect(attempt.step('report')).toHaveAttribute('data-state', 'current');
     await captureStep(page, '08-report-visible');
   });

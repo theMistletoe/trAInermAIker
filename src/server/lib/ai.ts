@@ -2,10 +2,10 @@ import { z } from 'zod';
 
 // One-line swap point for the OpenAI chat model used across all AI roles.
 export const DEFAULT_OPENAI_MODEL = 'gpt-5.6';
-// Conversational roles must stay responsive; QA/report generation produces
-// long structured output and legitimately needs a much longer budget.
+// Conversational roles must stay responsive; QA/report generation runs inside
+// a Workflow step with retries, so the per-attempt budget can be generous.
 export const AI_TIMEOUT_CHAT_MS = 30_000;
-export const AI_TIMEOUT_HEAVY_MS = 90_000;
+export const AI_TIMEOUT_HEAVY_MS = 300_000;
 
 export interface ChatCompletionRequest {
   messages: { role: 'system' | 'user' | 'assistant'; content: string }[];

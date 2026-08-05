@@ -1,21 +1,20 @@
 import { REPORT_QA_MESSAGES_MAX } from '../../shared/constants';
-import type { Report, ReportMessage } from '../../shared/schemas';
-import { listChatMessages } from '../db/chatMessages';
-import { listQaQuestions } from '../db/qa';
+import type { GetReportResponse, ReportMessage } from '../../shared/schemas';
+import { findAttemptGenerationForUser } from '../db/attempts';
 import {
   countUserReportMessages,
   findReportByAttempt,
-  insertReport,
   insertReportMessage,
   listReportMessages,
 } from '../db/reports';
-import { findSubmissionByAttempt, listSubmissionFileContents } from '../db/submissions';
-import { answerReportQuestion, generateReport } from '../lib/agent';
+import { answerReportQuestion } from '../lib/agent';
 import type { AiDeps } from '../lib/ai';
-import { assertPhase, getAttemptForUser } from './attemptService';
+import type { Bindings } from '../types';
+import { AttemptNotFoundError, assertPhase, getAttemptForUser } from './attemptService';
 import { getChallengeContentOrThrow } from './challengeService';
 // 1:1 with the shared CHAT_LIMIT_EXCEEDED code — reused, not duplicated.
 import { ChatLimitExceededError } from './chatService';
+import { enqueueHeavyGeneration, isGenerationPendingStale } from './generationService';
 
 export class ReportNotFoundError extends Error {
   constructor() {
@@ -25,37 +24,33 @@ export class ReportNotFoundError extends Error {
 }
 
 export async function getReport(
-  db: D1Database,
+  env: Pick<Bindings, 'DB' | 'HEAVY_AI_WORKFLOW'>,
   ai: AiDeps,
   id: number,
   userId: string,
-): Promise<Report> {
-  const attempt = await getAttemptForUser(db, id, userId);
+): Promise<GetReportResponse> {
+  const row = await findAttemptGenerationForUser(env.DB, id, userId);
+  if (!row) throw new AttemptNotFoundError(id);
+  const { attempt, generation } = row;
   if (attempt.phase !== 'report') throw new ReportNotFoundError();
-  const existing = await findReportByAttempt(db, id);
-  if (existing) return existing;
-  // Self-heal: advanceAttempt CAS-claimed the report phase but crashed before
-  // inserting the report. Generation never throws (stub fallback).
-  const submission = await findSubmissionByAttempt(db, id);
-  const qaPairs = (await listQaQuestions(db, id)).map((q) => ({
-    category: q.category,
-    question: q.question,
-    answer: q.answer ?? '',
-  }));
-  const contentMd = await generateReport(ai, {
-    challenge: getChallengeContentOrThrow(attempt.challengeId),
-    skillProfile: attempt.skillProfile,
-    chatHistory: (await listChatMessages(db, id)).map((m) => ({
-      role: m.role,
-      content: m.content,
-    })),
-    submissionFiles: submission ? await listSubmissionFileContents(db, submission.id) : [],
-    qaPairs,
-  });
-  await insertReport(db, id, contentMd, new Date().toISOString());
-  const report = await findReportByAttempt(db, id);
-  if (!report) throw new ReportNotFoundError();
-  return report;
+
+  const existing = await findReportByAttempt(env.DB, id);
+  if (existing) return { status: 'ready', report: existing };
+
+  if (generation.status === 'failed' && generation.kind === 'report') {
+    return { status: 'failed', message: generation.error ?? undefined };
+  }
+
+  if (generation.status === 'pending' && generation.kind === 'report') {
+    if (isGenerationPendingStale(attempt.updatedAt)) {
+      await enqueueHeavyGeneration(env, ai, id, 'report', { force: true });
+    }
+    return { status: 'generating' };
+  }
+
+  // Self-heal: report phase claimed but no row and no pending job.
+  await enqueueHeavyGeneration(env, ai, id, 'report');
+  return { status: 'generating' };
 }
 
 /** Attempt-scoped and readable in any phase (empty until questions are asked). */
@@ -69,28 +64,28 @@ export async function listQuestions(
 }
 
 export async function askQuestion(
-  db: D1Database,
+  env: Pick<Bindings, 'DB' | 'HEAVY_AI_WORKFLOW'>,
   ai: AiDeps,
   id: number,
   userId: string,
   question: string,
   quotedText: string | null,
 ): Promise<{ userMessage: ReportMessage; assistantMessage: ReportMessage }> {
-  const attempt = await getAttemptForUser(db, id, userId);
+  const attempt = await getAttemptForUser(env.DB, id, userId);
   assertPhase(attempt, 'report');
-  if ((await countUserReportMessages(db, id)) >= REPORT_QA_MESSAGES_MAX) {
+  if ((await countUserReportMessages(env.DB, id)) >= REPORT_QA_MESSAGES_MAX) {
     throw new ChatLimitExceededError();
   }
-  // Loads contentMd up front, healing a missing report row on the way.
-  const report = await getReport(db, ai, id, userId);
+  const reportState = await getReport(env, ai, id, userId);
+  if (reportState.status !== 'ready') throw new ReportNotFoundError();
   const challenge = getChallengeContentOrThrow(attempt.challengeId);
   // Snapshot before inserting: the new question goes to the agent separately.
-  const history = (await listReportMessages(db, id)).map((m) => ({
+  const history = (await listReportMessages(env.DB, id)).map((m) => ({
     role: m.role,
     content: m.content,
   }));
   const userMessage = await insertReportMessage(
-    db,
+    env.DB,
     id,
     'user',
     question,
@@ -99,13 +94,13 @@ export async function askQuestion(
   );
   const answer = await answerReportQuestion(ai, {
     challenge,
-    reportMd: report.contentMd,
+    reportMd: reportState.report.contentMd,
     quotedText,
     question,
     history,
   });
   const assistantMessage = await insertReportMessage(
-    db,
+    env.DB,
     id,
     'assistant',
     answer,

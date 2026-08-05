@@ -2,7 +2,7 @@ import { MESSAGES } from '@shared/messages';
 import type { Attempt, QaQuestion } from '@shared/schemas';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { advanceAttempt, answerQa, listQa } from '@/api/client';
+import { advanceAttempt, answerQa, listQa, regenerateGeneration } from '@/api/client';
 import { ChatPanel } from '@/components/ChatPanel';
 import { Button } from '@/components/ui/button';
 import type { ChatItem } from '@/hooks/useChatThread';
@@ -14,8 +14,12 @@ interface QaPhaseProps {
 
 type QaState =
   | { status: 'loading' }
+  | { status: 'generating' }
   | { status: 'error' }
+  | { status: 'failed'; message?: string }
   | { status: 'ready'; questions: QaQuestion[]; done: boolean };
+
+const POLL_MS = 1500;
 
 // 質問 → assistant 発言、回答済みなら直後に user 発言、の順でチャット風に並べる。
 const toItems = (questions: QaQuestion[]): ChatItem[] =>
@@ -43,25 +47,51 @@ const toItems = (questions: QaQuestion[]): ChatItem[] =>
 
 export function QaPhase({ attempt, onAttempt }: QaPhaseProps) {
   const [state, setState] = useState<QaState>({ status: 'loading' });
+  const [pollEpoch, setPollEpoch] = useState(0);
   const [answering, setAnswering] = useState(false);
   const [advancing, setAdvancing] = useState(false);
   const [advanceFailed, setAdvanceFailed] = useState(false);
+  const [retrying, setRetrying] = useState(false);
   const advancingRef = useRef(false);
   const autoAdvancedRef = useRef(false);
 
   useEffect(() => {
+    // pollEpoch intentionally restarts this effect after regenerate.
+    void pollEpoch;
     let alive = true;
-    listQa(attempt.id)
-      .then((res) => {
-        if (alive) setState({ status: 'ready', questions: res.questions, done: res.done });
-      })
-      .catch(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    const load = async () => {
+      try {
+        const res = await listQa(attempt.id);
+        if (!alive) return;
+        if (res.status === 'generating') {
+          setState({ status: 'generating' });
+          timer = setTimeout(() => {
+            void load();
+          }, POLL_MS);
+          return;
+        }
+        if (res.status === 'failed') {
+          setState(
+            res.message !== undefined
+              ? { status: 'failed', message: res.message }
+              : { status: 'failed' },
+          );
+          return;
+        }
+        setState({ status: 'ready', questions: res.questions, done: res.done });
+      } catch {
         if (alive) setState({ status: 'error' });
-      });
+      }
+    };
+
+    void load();
     return () => {
       alive = false;
+      if (timer !== undefined) clearTimeout(timer);
     };
-  }, [attempt.id]);
+  }, [attempt.id, pollEpoch]);
 
   const advance = useCallback(async () => {
     if (advancingRef.current) return;
@@ -79,6 +109,19 @@ export function QaPhase({ attempt, onAttempt }: QaPhaseProps) {
       setAdvancing(false);
     }
   }, [attempt.id, onAttempt]);
+
+  const retry = useCallback(async () => {
+    setRetrying(true);
+    try {
+      await regenerateGeneration(attempt.id, 'qa');
+      setState({ status: 'generating' });
+      setPollEpoch((n) => n + 1);
+    } catch {
+      toast.error(MESSAGES.qa.generateFailed);
+    } finally {
+      setRetrying(false);
+    }
+  }, [attempt.id]);
 
   const done = state.status === 'ready' && state.done;
 
@@ -119,12 +162,52 @@ export function QaPhase({ attempt, onAttempt }: QaPhaseProps) {
       </p>
     );
   }
+
+  if (state.status === 'generating' || state.status === 'loading') {
+    return (
+      <div className="flex flex-col items-center gap-3 py-8">
+        <p data-testid="qa-generating" className="text-center text-muted-foreground">
+          {MESSAGES.qa.generating}
+        </p>
+        {state.status === 'generating' && (
+          <Button
+            type="button"
+            variant="outline"
+            data-testid="qa-retry-button"
+            disabled={retrying}
+            onClick={() => void retry()}
+          >
+            {MESSAGES.qa.retry}
+          </Button>
+        )}
+      </div>
+    );
+  }
+
+  if (state.status === 'failed') {
+    return (
+      <div className="flex flex-col items-start gap-3 py-8">
+        <p data-testid="qa-generate-failed" className="text-sm text-destructive">
+          {state.message?.trim() || MESSAGES.qa.generateFailed}
+        </p>
+        <Button
+          type="button"
+          data-testid="qa-retry-button"
+          disabled={retrying}
+          onClick={() => void retry()}
+        >
+          {MESSAGES.qa.retry}
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <section className="flex flex-col gap-4">
       <p className="text-sm text-muted-foreground">{MESSAGES.qa.lead}</p>
       <ChatPanel
-        messages={state.status === 'ready' ? toItems(state.questions) : []}
-        loading={state.status === 'loading'}
+        messages={toItems(state.questions)}
+        loading={false}
         loadFailed={false}
         sending={answering}
         onSend={handleAnswer}

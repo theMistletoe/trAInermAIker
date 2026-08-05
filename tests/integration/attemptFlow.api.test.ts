@@ -177,7 +177,12 @@ describe('受講フローの一気通貫ウォーク (attempts API)', () => {
 
     const qaRes = await get(`/api/attempts/${attemptId}/qa`);
     expect(qaRes.status).toBe(200);
-    const qa = (await qaRes.json()) as { questions: QaQuestionJson[]; done: boolean };
+    const qa = (await qaRes.json()) as {
+      status: string;
+      questions: QaQuestionJson[];
+      done: boolean;
+    };
+    expect(qa.status).toBe('ready');
     expect(qa.questions).toHaveLength(3);
     expect(qa.questions.map((q) => q.category)).toEqual([
       'gap',
@@ -212,7 +217,7 @@ describe('受講フローの一気通貫ウォーク (attempts API)', () => {
     expect(((await extra.json()) as { error: string }).error).toBe('QA_COMPLETED');
 
     const qaRes = await get(`/api/attempts/${attemptId}/qa`);
-    expect(((await qaRes.json()) as { done: boolean }).done).toBe(true);
+    expect(((await qaRes.json()) as { status: string; done: boolean }).done).toBe(true);
   });
 
   it('QA完了後のadvanceでレポートが生成され、引用付き質問に回答が返る', async () => {
@@ -222,9 +227,13 @@ describe('受講フローの一気通貫ウォーク (attempts API)', () => {
 
     const reportRes = await get(`/api/attempts/${attemptId}/report`);
     expect(reportRes.status).toBe(200);
-    const { report } = (await reportRes.json()) as { report: { contentMd: string } };
-    expect(report.contentMd.startsWith('# フィードバックレポート')).toBe(true);
-    expect(report.contentMd).toContain('## 総評');
+    const body = (await reportRes.json()) as {
+      status: string;
+      report: { contentMd: string };
+    };
+    expect(body.status).toBe('ready');
+    expect(body.report.contentMd.startsWith('# フィードバックレポート')).toBe(true);
+    expect(body.report.contentMd).toContain('## 総評');
 
     const askRes = await postJson(`/api/attempts/${attemptId}/report/questions`, {
       question: 'この指摘の意図は？',
@@ -246,5 +255,16 @@ describe('受講フローの一気通貫ウォーク (attempts API)', () => {
     const advanceRes = await post(`/api/attempts/${attemptId}/advance`);
     expect(advanceRes.status).toBe(409);
     expect(((await advanceRes.json()) as { error: string }).error).toBe('INVALID_PHASE');
+
+    // regenerate replaces an existing report (legacy stub recovery path).
+    const regen = await postJson(`/api/attempts/${attemptId}/regenerate`, { kind: 'report' });
+    expect(regen.status).toBe(200);
+    const regenReport = await get(`/api/attempts/${attemptId}/report`);
+    const regenBody = (await regenReport.json()) as {
+      status: string;
+      report: { contentMd: string };
+    };
+    expect(regenBody.status).toBe('ready');
+    expect(regenBody.report.contentMd.startsWith('# フィードバックレポート')).toBe(true);
   });
 });

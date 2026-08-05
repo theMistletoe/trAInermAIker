@@ -21,6 +21,8 @@ import {
   listReportMessagesResponseSchema,
   postChatBodySchema,
   postChatResponseSchema,
+  regenerateBodySchema,
+  regenerateResponseSchema,
   submissionFileQuerySchema,
   submissionFormSchema,
   submitAssessmentBodySchema,
@@ -49,6 +51,7 @@ import {
 import { ChallengeNotFoundError } from '../services/challengeService';
 import { ChatLimitExceededError, listMessages, postMessage } from '../services/chatService';
 import { answerQuestion, getQaState, QaCompletedError } from '../services/qaService';
+import { regenerateHeavyGeneration } from '../services/regenerateService';
 import {
   askQuestion,
   getReport,
@@ -258,12 +261,37 @@ export const attemptsRoute = new Hono<{ Bindings: Bindings }>()
       const { id } = c.req.valid('param');
       const ai = aiDepsFromEnv(c.env);
       try {
-        const attempt = await advanceAttempt(c.env.DB, ai, id, user.id);
+        const attempt = await advanceAttempt(c.env, ai, id, user.id);
         return c.json(advanceAttemptResponseSchema.parse({ attempt }), 200);
       } catch (e) {
         const mapped = mapAttemptError(e);
         if (mapped) return c.json(errorBody(mapped.code), mapped.status);
         console.error('advanceAttempt failed', e);
+        return c.json(errorBody('INTERNAL_ERROR'), 500);
+      }
+    },
+  )
+  .post(
+    '/:id/regenerate',
+    zValidator('param', attemptIdParamSchema, (result, c) => {
+      if (!result.success) return c.json(errorBody('INVALID_ID'), 400);
+    }),
+    zValidator('json', regenerateBodySchema, (result, c) => {
+      if (!result.success) return c.json(errorBody('INVALID_BODY'), 400);
+    }),
+    async (c) => {
+      const user = await getSessionUser(c.env, c.req.raw.headers);
+      if (!user) return c.json(errorBody('UNAUTHORIZED'), 401);
+      const { id } = c.req.valid('param');
+      const { kind } = c.req.valid('json');
+      const ai = aiDepsFromEnv(c.env);
+      try {
+        const attempt = await regenerateHeavyGeneration(c.env, ai, id, user.id, kind);
+        return c.json(regenerateResponseSchema.parse({ attempt }), 200);
+      } catch (e) {
+        const mapped = mapAttemptError(e);
+        if (mapped) return c.json(errorBody(mapped.code), mapped.status);
+        console.error('regenerateHeavyGeneration failed', e);
         return c.json(errorBody('INTERNAL_ERROR'), 500);
       }
     },
@@ -366,8 +394,8 @@ export const attemptsRoute = new Hono<{ Bindings: Bindings }>()
       const { id } = c.req.valid('param');
       const ai = aiDepsFromEnv(c.env);
       try {
-        const { questions, done } = await getQaState(c.env.DB, ai, id, user.id);
-        return c.json(listQaResponseSchema.parse({ questions, done }), 200);
+        const state = await getQaState(c.env, ai, id, user.id);
+        return c.json(listQaResponseSchema.parse(state), 200);
       } catch (e) {
         const mapped = mapAttemptError(e);
         if (mapped) return c.json(errorBody(mapped.code), mapped.status);
@@ -411,8 +439,8 @@ export const attemptsRoute = new Hono<{ Bindings: Bindings }>()
       const { id } = c.req.valid('param');
       const ai = aiDepsFromEnv(c.env);
       try {
-        const report = await getReport(c.env.DB, ai, id, user.id);
-        return c.json(getReportResponseSchema.parse({ report }), 200);
+        const state = await getReport(c.env, ai, id, user.id);
+        return c.json(getReportResponseSchema.parse(state), 200);
       } catch (e) {
         const mapped = mapAttemptError(e);
         if (mapped) return c.json(errorBody(mapped.code), mapped.status);
@@ -457,7 +485,7 @@ export const attemptsRoute = new Hono<{ Bindings: Bindings }>()
       const ai = aiDepsFromEnv(c.env);
       try {
         const { userMessage, assistantMessage } = await askQuestion(
-          c.env.DB,
+          c.env,
           ai,
           id,
           user.id,

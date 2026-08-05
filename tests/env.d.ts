@@ -6,6 +6,7 @@ declare module 'cloudflare:test' {
     // src/server types stay accurate.
     ASSETS: Fetcher;
     SUBMISSIONS: R2Bucket;
+    HEAVY_AI_WORKFLOW: Workflow;
     TEST_MIGRATIONS: D1Migration[];
   }
 }

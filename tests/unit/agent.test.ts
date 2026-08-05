@@ -347,18 +347,25 @@ describe('Q&A生成 (generateQaQuestions)', () => {
     expect(req.timeoutMs).toBe(AI_TIMEOUT_HEAVY_MS);
   });
 
-  it('1問しか返らなかったらスタブの質問で3問まで補充する', async () => {
+  it('1問しか返らなかったら throw する（stub で埋めない）', async () => {
     const complete = vi
       .fn()
       .mockResolvedValue(
         JSON.stringify({ questions: [{ category: 'growth', question: '発展的な質問です' }] }),
       );
-    const out = await generateQaQuestions({ client: { complete } }, baseInput);
-    const stubs = stubQaQuestions();
-    expect(out).toEqual([{ category: 'growth', question: '発展的な質問です' }, stubs[0], stubs[1]]);
+    await expect(generateQaQuestions({ client: { complete } }, baseInput)).rejects.toThrow(
+      /insufficient valid questions/,
+    );
   });
 
-  it('不正なカテゴリのエントリは捨て、残りをスタブで補充する', async () => {
+  it('空の questions 配列は throw する', async () => {
+    const complete = vi.fn().mockResolvedValue(JSON.stringify({ questions: [] }));
+    await expect(generateQaQuestions({ client: { complete } }, baseInput)).rejects.toThrow(
+      /insufficient valid questions/,
+    );
+  });
+
+  it('不正なカテゴリのエントリは捨て、有効件数が足りなければ throw する', async () => {
     const complete = vi.fn().mockResolvedValue(
       JSON.stringify({
         questions: [
@@ -368,18 +375,25 @@ describe('Q&A生成 (generateQaQuestions)', () => {
         ],
       }),
     );
-    const out = await generateQaQuestions({ client: { complete } }, baseInput);
-    expect(out).toHaveLength(3);
-    expect(out[0]).toEqual({ category: 'gap', question: '有効な質問' });
-    expect(out.some((q) => q.question === '無効なカテゴリの質問')).toBe(false);
+    await expect(generateQaQuestions({ client: { complete } }, baseInput)).rejects.toThrow(
+      /insufficient valid questions/,
+    );
     expect(complete).toHaveBeenCalledTimes(1);
   });
 
-  it('2回とも不正な出力ならスタブの3問へフォールバックする', async () => {
+  it('2回とも不正な出力なら throw する（Workflow がリトライする）', async () => {
     const complete = vi.fn().mockResolvedValue('JSONではない出力');
-    const out = await generateQaQuestions({ client: { complete } }, baseInput);
-    expect(out).toEqual(stubQaQuestions());
+    await expect(generateQaQuestions({ client: { complete } }, baseInput)).rejects.toThrow(
+      /schema validation/,
+    );
     expect(complete).toHaveBeenCalledTimes(2);
+  });
+
+  it('AIが例外を投げたらそのまま伝播する', async () => {
+    const complete = vi.fn().mockRejectedValue(new Error('overloaded'));
+    await expect(generateQaQuestions({ client: { complete } }, baseInput)).rejects.toThrow(
+      'overloaded',
+    );
   });
 });
 
@@ -403,17 +417,19 @@ describe('レポート生成 (generateReport)', () => {
     expect(text).toContain('## 総評');
   });
 
-  it('AIが例外を投げたらスタブレポート（見出し付き）を返す', async () => {
+  it('AIが例外を投げたらそのまま伝播する（stub を成功結果として書かない）', async () => {
     const complete = vi.fn().mockRejectedValue(new Error('overloaded'));
-    const out = await generateReport({ client: { complete } }, baseInput);
-    expect(out).toBe(stubReport({ textFileCount: submissionFiles.length, qaPairs: sampleQaPairs }));
-    expect(out).toContain('## 総評');
+    await expect(generateReport({ client: { complete } }, baseInput)).rejects.toThrow('overloaded');
   });
 
-  it('空白のみの出力はスタブレポートへフォールバックする', async () => {
+  it('空白のみの出力は throw する', async () => {
     const complete = vi.fn().mockResolvedValue('  \n ');
-    const out = await generateReport({ client: { complete } }, baseInput);
-    expect(out).toContain('# フィードバックレポート');
+    await expect(generateReport({ client: { complete } }, baseInput)).rejects.toThrow(/empty/);
+  });
+
+  it('forceStub のときは決定的スタブを返す', async () => {
+    const out = await generateReport({ forceStub: true }, baseInput);
+    expect(out).toBe(stubReport({ textFileCount: submissionFiles.length, qaPairs: sampleQaPairs }));
   });
 });
 

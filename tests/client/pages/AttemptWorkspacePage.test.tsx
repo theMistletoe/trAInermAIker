@@ -96,6 +96,7 @@ describe('AttemptWorkspacePage', () => {
       http.get('/api/attempts/:id/qa', () =>
         HttpResponse.json(
           listQaResponseSchema.parse({
+            status: 'ready',
             questions: [
               buildQaQuestion({ answer: '回答済みです', answeredAt: '2026-01-01T00:00:00.000Z' }),
             ],
