@@ -1,12 +1,12 @@
 import { env } from 'cloudflare:test';
 import { insertAttempt } from '@server/db/attempts';
 import { answerQaQuestionsBatch, insertQaQuestions, listQaQuestions } from '@server/db/qa';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 describe('answerQaQuestionsBatch', () => {
   let attemptId = 0;
 
-  beforeAll(async () => {
+  beforeEach(async () => {
     const now = '2026-01-01T00:00:00.000Z';
     const attempt = await insertAttempt(
       env.DB,

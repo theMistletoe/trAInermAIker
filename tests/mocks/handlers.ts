@@ -178,16 +178,17 @@ export const defaultHandlers = [
       answers: { questionId: number; answer: string }[];
     };
     const now = '2026-01-01T00:00:00.000Z';
+    // Reflect submitted answers onto the base question list (matching server semantics:
+    // return ALL questions with stable questionNo, updated answers applied).
+    const baseQuestions = [buildQaQuestion()];
+    const answerMap = new Map(body.answers.map((a) => [a.questionId, a.answer]));
     return HttpResponse.json(
       submitQaResponseSchema.parse({
-        questions: body.answers.map((a, i) =>
-          buildQaQuestion({
-            id: a.questionId,
-            questionNo: i + 1,
-            answer: a.answer,
-            answeredAt: now,
-          }),
-        ),
+        questions: baseQuestions.map((q) => ({
+          ...q,
+          answer: answerMap.has(q.id) ? (answerMap.get(q.id) ?? null) : q.answer,
+          answeredAt: answerMap.has(q.id) ? now : q.answeredAt,
+        })),
         done: true,
       }),
     );
