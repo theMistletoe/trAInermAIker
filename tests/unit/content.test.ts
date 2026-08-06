@@ -40,6 +40,22 @@ describe('課題1 (aws-cdk-file-sharing) のコンテンツ', () => {
     expect(challenge.hiddenSpecMd).toContain('機能要件');
     expect(challenge.hiddenSpecMd).toContain('90日');
     expect(challenge.hiddenSpecMd).toContain('暗号化');
+    expect(challenge.hiddenSpecMd).toContain('共有領域');
+    expect(challenge.hiddenSpecMd).toContain('管理者ロール');
+  });
+
+  it('公開の問題文は共有利用の文脈を含み、個人フォルダ限定や削除権限の確定要件を漏らさない', () => {
+    expect(challenge.descriptionMd).toContain('ほかの社員も');
+    expect(challenge.descriptionMd).not.toContain('管理者ロール');
+    expect(challenge.descriptionMd).not.toContain('個人用フォルダ');
+    expect(challenge.descriptionMd).not.toContain('自分が登録したファイルに限定');
+  });
+
+  it('提出ガイド・評価・stub QA が削除権限（本人または管理者）で一致する', () => {
+    expect(challenge.submissionGuideMd).toContain('登録者本人または管理者');
+    expect(challenge.rubricMd).toContain('登録者と管理者ロール');
+    expect(challenge.hiddenSpecMd).toContain('そのファイルを登録した本人');
+    expect(challenge.hiddenSpecMd).toContain('管理者ロールを持つ利用者');
   });
 
   it('提出要領 (submissionGuideMd) は公開で、提出フォーマット情報を含む', () => {
