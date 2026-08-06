@@ -91,7 +91,7 @@ export function stubQaQuestions(): { category: QaCategory; question: string }[] 
     {
       category: 'gap',
       question:
-        '利用者の認証と、他人のファイルへのアクセス防止をどのように実現しましたか？具体的な仕組みを説明してください。',
+        '認証済み社員による社内共有を実現しつつ、未認証・社外からの取得を防ぎ、削除は登録者本人または管理者に限定するには、どのように設計しましたか？',
     },
     {
       category: 'unasked_requirement',
