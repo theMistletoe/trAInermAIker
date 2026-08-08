@@ -1,13 +1,10 @@
 import { MESSAGES } from '@shared/messages';
-import { type AttemptPhase, attemptPhaseEnum } from '@shared/schemas';
+import { ATTEMPT_PHASE_ORDER, type AttemptPhase, phaseIndex } from '@shared/schemas';
 import { Badge } from '@/components/ui/badge';
 
 interface PhaseStepperProps {
   current: AttemptPhase;
 }
-
-// enum の宣言順がそのままフェーズの進行順。
-const PHASES = attemptPhaseEnum.options;
 
 const BADGE_VARIANT = {
   done: 'secondary',
@@ -16,10 +13,10 @@ const BADGE_VARIANT = {
 } as const;
 
 export function PhaseStepper({ current }: PhaseStepperProps) {
-  const currentIndex = PHASES.indexOf(current);
+  const currentIndex = phaseIndex(current);
   return (
     <ol className="flex flex-wrap items-center gap-2">
-      {PHASES.map((phase, index) => {
+      {ATTEMPT_PHASE_ORDER.map((phase, index) => {
         const state =
           index < currentIndex ? 'done' : index === currentIndex ? 'current' : 'upcoming';
         return (

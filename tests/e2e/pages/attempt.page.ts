@@ -46,6 +46,11 @@ export class AttemptPage {
   readonly reportAskButton: Locator;
   readonly reportQuote: Locator;
 
+  // history（参照パネル）
+  readonly historyPanel: Locator;
+  readonly historyChatMessages: Locator;
+  readonly historyQaItems: Locator;
+
   constructor(page: Page) {
     this.page = page;
     this.workspace = page.getByTestId('attempt-workspace');
@@ -79,10 +84,19 @@ export class AttemptPage {
     this.reportMarkdown = page.getByTestId('report-markdown');
     this.reportAskButton = page.getByTestId('report-ask-button');
     this.reportQuote = page.getByTestId('report-quote');
+
+    this.historyPanel = page.getByTestId('history-panel');
+    this.historyChatMessages = page.getByTestId('history-chat-message');
+    this.historyQaItems = page.getByTestId('history-qa-item');
   }
 
   step(phase: AttemptPhase): Locator {
     return this.page.getByTestId(`phase-step-${phase}`);
+  }
+
+  /** 参照パネルの各セクションを開閉するトリガー。 */
+  historySection(key: 'challenge' | 'assessment' | 'chat' | 'submission' | 'qa'): Locator {
+    return this.page.getByTestId(`history-section-${key}`);
   }
 
   choice(questionId: string, choiceId: string): Locator {

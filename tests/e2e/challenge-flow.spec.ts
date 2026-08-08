@@ -82,7 +82,13 @@ test('チャレンジ挑戦のフルジャーニー（実AI）', async ({ page }
     await expect(attempt.guide).toBeVisible({ timeout: 30_000 });
     await expect(attempt.fileInput).toBeVisible({ timeout: 30_000 });
     await expect(attempt.step('submission')).toHaveAttribute('data-state', 'current');
+    // 参照パネル: 完了した要件ヒアリングの記録をこのフェーズから読み返せる
+    // （DB 読みのみで AI 呼び出しなし。presence だけ検証する）。
+    await attempt.historySection('chat').click();
+    await expect(attempt.historyChatMessages.first()).toBeVisible({ timeout: 15_000 });
     await captureStep(page, '05-submission-phase');
+    // 以降のステップの画面を変えないよう閉じて戻す。
+    await attempt.historySection('chat').click();
   });
 
   await test.step('CDK zip をアップロードしてファイル一覧が出る', async () => {
@@ -190,5 +196,11 @@ test('チャレンジ挑戦のフルジャーニー（実AI）', async ({ page }
     await expect(attempt.step('report')).toHaveAttribute('data-state', 'current');
     await expect(attempt.reportMarkdown).toBeVisible({ timeout: 30_000 });
     await captureStep(page, '10-reload-persistence');
+  });
+
+  await test.step('参照パネルから Q&A の記録を読み返せる', async () => {
+    await attempt.historySection('qa').click();
+    await expect(attempt.historyQaItems.first()).toBeVisible({ timeout: 15_000 });
+    await captureStep(page, '11-history-qa');
   });
 });
