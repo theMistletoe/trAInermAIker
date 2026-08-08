@@ -1,9 +1,10 @@
 import { MESSAGES } from '@shared/messages';
+import { UserPlusIcon } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { signIn } from '@/lib/authClient';
@@ -34,8 +35,9 @@ export default function LoginPage() {
       <Card className="mx-auto w-full max-w-sm">
         <CardHeader>
           <CardTitle>ログイン</CardTitle>
+          <CardDescription>{MESSAGES.auth.loginDescription}</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex flex-col gap-6">
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div className="flex flex-col gap-2">
               <Label htmlFor="login-email">メールアドレス</Label>
@@ -63,6 +65,20 @@ export default function LoginPage() {
               ログイン
             </Button>
           </form>
+          <div className="relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t after:border-border">
+            <span className="relative z-10 bg-card px-2 text-muted-foreground">
+              {MESSAGES.auth.noAccountTitle}
+            </span>
+          </div>
+          <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-4 text-center">
+            <p className="text-sm text-muted-foreground">{MESSAGES.auth.noAccountLead}</p>
+            <Button asChild variant="outline">
+              <Link to="/signup" data-testid="login-to-signup">
+                <UserPlusIcon />
+                {MESSAGES.auth.goToSignup}
+              </Link>
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>
