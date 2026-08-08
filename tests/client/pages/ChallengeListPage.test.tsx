@@ -42,4 +42,15 @@ describe('ChallengeListPage', () => {
 
     expect(await screen.findByText(MESSAGES.challenge.listFailed)).toBeInTheDocument();
   });
+
+  it('サービス紹介と課題一覧が同じページに表示される', async () => {
+    const { container } = renderWithProviders(<ChallengeListPage />);
+
+    await screen.findAllByTestId('challenge-card');
+    expect(screen.getByRole('heading', { name: MESSAGES.landing.heroTitle })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: MESSAGES.challenge.listTitle })).toBeInTheDocument();
+    // ヒーローCTAのアンカー先が実在することまで担保する
+    expect(screen.getByTestId('landing-cta')).toHaveAttribute('href', '#challenges');
+    expect(container.querySelector('#challenges')).not.toBeNull();
+  });
 });

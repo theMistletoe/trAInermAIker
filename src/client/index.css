@@ -186,6 +186,12 @@
       linear-gradient(135deg, color-mix(in oklch, var(--muted) 72%, transparent), transparent 42%);
     font-feature-settings: "palt";
   }
+  /* トップのアンカーCTA用。motion 配慮設定時は既定のジャンプのまま */
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
+  }
 }
 
 /* prose をテーマトークンに追従させる（prose-invert 不要: 変数側が dark で切り替わる） */

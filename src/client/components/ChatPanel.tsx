@@ -44,7 +44,9 @@ export function ChatPanel({
   // biome-ignore lint/correctness/useExhaustiveDependencies: メッセージ追加・送信中表示の変化で末尾へスクロールする
   useEffect(() => {
     // jsdom は scrollIntoView を実装しないため optional call にする。
-    bottomRef.current?.scrollIntoView?.({ block: 'end' });
+    // instant 固定: html の scroll-behavior: smooth(トップのアンカーCTA用)に
+    // チャット自動スクロールが巻き込まれてアニメーション化するのを防ぐ。
+    bottomRef.current?.scrollIntoView?.({ block: 'end', behavior: 'instant' });
   }, [messages, sending]);
 
   const trimmed = draft.trim();

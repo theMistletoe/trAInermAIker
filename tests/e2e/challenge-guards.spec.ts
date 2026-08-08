@@ -31,6 +31,18 @@ test('未ログインで attempt ページを開くとログインページへ�
   await expect(page).toHaveURL(/\/login$/, { timeout: 10_000 });
 });
 
+test('トップページに初見向けのサービス紹介が表示される', async ({ page }) => {
+  const challenges = new ChallengesPage(page);
+  await challenges.gotoList();
+  await expect(challenges.landingHero).toBeVisible();
+  await expect(challenges.landingPhases).toHaveCount(5);
+  // CTA のアンカー遷移を URL ハッシュで決定的に検証し、一覧セクションへの
+  // 視覚的到達は toBeInViewport で確認する(toBeVisible はビューポート外でも真)。
+  await challenges.landingCta.click();
+  await expect(page).toHaveURL(/#challenges$/);
+  await expect(challenges.cards.first()).toBeInViewport();
+});
+
 test('チャレンジ一覧と詳細は未ログインでも閲覧できる', async ({ page }) => {
   const challenges = new ChallengesPage(page);
   await challenges.gotoList();
