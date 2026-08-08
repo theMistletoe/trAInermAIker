@@ -10,6 +10,14 @@ export const MESSAGES = {
     signupFailed: 'サインアップに失敗しました',
     loginFailed: 'メールアドレスまたはパスワードが正しくありません',
     logoutFailed: 'ログアウトに失敗しました',
+    loginDescription: '登録済みのメールアドレスとパスワードでログインします。',
+    signupDescription: 'アカウントを作成すると、課題への挑戦を開始できます。',
+    noAccountTitle: 'はじめてご利用の方',
+    noAccountLead:
+      'まだユーザー登録がお済みでない方は、先にアカウントの作成（サインアップ）が必要です。',
+    goToSignup: '新規ユーザー登録はこちら',
+    hasAccountTitle: 'アカウントをお持ちの方',
+    goToLogin: 'ログインはこちら',
   },
   challenge: {
     listTitle: '課題一覧',

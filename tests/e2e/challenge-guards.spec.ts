@@ -1,4 +1,5 @@
 import { expect, type Page, test } from '@playwright/test';
+import { MESSAGES } from '../../src/shared/messages';
 import { ChallengesPage } from './pages/challenges.page';
 
 /**
@@ -17,6 +18,21 @@ async function signup(page: Page, email: string): Promise<void> {
   await page.getByTestId('signup-password').fill(PASSWORD);
   await page.getByTestId('signup-submit').click();
 }
+
+test('ログイン画面の案内からサインアップ画面へ遷移できる（往復）', async ({ page }) => {
+  await page.goto('/login');
+
+  // 未登録ユーザー向けの案内文と導線が見えている
+  await expect(page.getByText(MESSAGES.auth.noAccountLead)).toBeVisible();
+  await page.getByTestId('login-to-signup').click();
+  await expect(page).toHaveURL(/\/signup$/);
+  await expect(page.getByTestId('signup-submit')).toBeVisible();
+
+  // 逆方向: サインアップ画面からログイン画面へ戻れる
+  await page.getByTestId('signup-to-login').click();
+  await expect(page).toHaveURL(/\/login$/);
+  await expect(page.getByTestId('login-submit')).toBeVisible();
+});
 
 test('未ログインで挑戦開始するとログインページへリダイレクトされる', async ({ page }) => {
   const challenges = new ChallengesPage(page);
