@@ -8,6 +8,7 @@ paths:
 - Page Objects live in `tests/e2e/pages/` (e.g. `toast.component.ts`). POMs expose locators and simple actions only; assertions stay in the specs.
 - Evidence helpers in `tests/e2e/support/evidence.ts`: `captureStep(page, label)` per `test.step`, `newEvidenceContext(browser)` + `attachContextVideos(ctx, label)` for per-context video.
 - Tests rely on stable `data-testid` attributes — keep these stable when editing components:
+  - landing (トップのサービス紹介): `landing-hero`, `landing-flow`, `landing-phase-<phase>` (`assessment` / `requirement_chat` / `submission` / `qa` / `report`), `landing-cta`, `landing-signup`
   - challenges: `challenge-card`, `challenge-list-empty`, `challenge-spec`, `challenge-start-button`
   - attempt workspace: `attempt-workspace`, `phase-step-<phase>` (`assessment` / `requirement_chat` / `submission` / `qa` / `report`), `phase-advance-button`
   - assessment: `assessment-form`, `assessment-question`, `assessment-choice-<questionId>-<choiceId>`, `assessment-answer-input`, `assessment-submit`

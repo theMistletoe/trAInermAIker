@@ -6,6 +6,31 @@ import { ZIP_MAX_BYTES } from './constants';
  * 二重リテラルのタイポ事故を防ぐ。
  */
 export const MESSAGES = {
+  landing: {
+    heroBadge: '実践課題 × AIとの問答で学ぶ',
+    heroTitle: '要件を引き出し、つくり、問答で確かめる。',
+    heroLead:
+      'trAInermAIkerは、アーキテクチャ設計などの実践課題に取り組む学習サービスです。課題の要件はあらかじめ与えられません。AIステークホルダーとの対話で自ら引き出し、成果物を自分の手でつくって提出します。仕上げはAIとの問答とフィードバックレポートで、学びを確かなものにします。',
+    ctaChallenges: '課題を見る',
+    ctaSignup: 'アカウントを作る',
+    flowTitle: '学びの流れ',
+    flowLead: 'ひとつの課題を、5つのフェーズで進めます。',
+    phaseDescriptions: {
+      assessment: 'いまの理解度をAIに共有。以降のフェーズの応対に反映されます。',
+      requirement_chat: 'AIステークホルダーとの対話で、隠れた要件を自ら引き出します。',
+      submission: '自分の手で設計・実装した成果物を、zipにまとめて提出します。',
+      qa: '提出物をふまえてAIが出題。回答を通じて理解度を測ります。',
+      report: 'フィードバックレポートで学びを確認。不明点はその場でAIに質問できます。',
+    },
+    featuresTitle: 'このサービスが大切にしていること',
+    featureElicitTitle: '要件は、自分で引き出す',
+    featureElicitBody:
+      '整理された仕様書は渡されません。曖昧な発言の裏にある本当の要件を見極める力を鍛えます。',
+    featureBuildTitle: '答えを見ずに、自分でつくる',
+    featureBuildBody: '解答例をなぞるのではなく、動く成果物を自分で設計・実装して提出します。',
+    featureVerifyTitle: '「わかったつもり」で終わらせない',
+    featureVerifyBody: '問答とレポートが理解の穴を明らかにし、学びを次の課題につなげます。',
+  },
   auth: {
     signupFailed: 'サインアップに失敗しました',
     loginFailed: 'メールアドレスまたはパスワードが正しくありません',
