@@ -42,6 +42,17 @@ describe('AttemptWorkspacePage', () => {
     expect(await screen.findByTestId('assessment-form')).toBeInTheDocument();
     expect(screen.getByTestId('phase-step-assessment')).toHaveAttribute('data-state', 'current');
     expect(screen.getByTestId('phase-step-report')).toHaveAttribute('data-state', 'upcoming');
+    expect(screen.getByTestId('history-panel')).toBeInTheDocument();
+  });
+
+  it('report フェーズの履歴パネルに全セクションが並ぶ', async () => {
+    overridePhase('report');
+    renderPage();
+
+    expect(await screen.findByTestId('history-panel')).toBeInTheDocument();
+    for (const key of ['challenge', 'assessment', 'chat', 'submission', 'qa']) {
+      expect(screen.getByTestId(`history-section-${key}`)).toBeInTheDocument();
+    }
   });
 
   it('requirement_chat フェーズでチャットパネルと進行ボタンを表示する', async () => {

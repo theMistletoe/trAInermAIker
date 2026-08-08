@@ -106,6 +106,23 @@ export const MESSAGES = {
     generateFailed: '質問の生成に失敗しました。再試行してください。',
     retry: '質問生成を再試行',
   },
+  history: {
+    sections: {
+      challenge: '課題内容',
+      assessment: 'スキル確認の記録',
+      chat: '要件ヒアリングの記録',
+      submission: '提出ファイル',
+      qa: 'Q&Aの記録',
+    },
+    loadFailed: '記録の取得に失敗しました',
+    retry: '再読み込み',
+    challengeUnavailable: '課題内容を取得できませんでした',
+    chatEmpty: 'メッセージはありません',
+    qaEmpty: 'Q&Aの記録はまだありません',
+    submissionGuideTitle: '提出ガイド',
+    skillSummaryTitle: 'AIによるスキル評価',
+    noAnswer: '未回答',
+  },
   report: {
     title: 'フィードバックレポート',
     generating: 'レポートを生成中…',

@@ -16,6 +16,7 @@ paths:
   - submission: `submission-file-input`, `submission-upload-button`, `submission-file-item`, `submission-file-name`, `submission-file-content`, `submission-file-truncated`, `submission-files-empty`
   - qa: `qa-form`, `qa-question`, `qa-answer-input`, `qa-submit`, `qa-completed`, `qa-generating`, `qa-generate-failed`, `qa-retry-button`
   - report: `report-view`, `report-generating`, `report-generate-failed`, `report-retry-button`, `report-quote`, `report-quote-clear`, `report-ask-button`
+  - history（参照パネル）: `history-panel`, `history-section-<key>` / `history-content-<key>` (`challenge` / `assessment` / `chat` / `submission` / `qa`), `history-challenge-description`, `history-assessment-item`, `history-chat-message`, `history-qa-item`, `history-retry-button`
   - nav/auth: `brand-home`, `nav-signup`, `nav-login`, `nav-logout`, `nav-menu`, `nav-menu-panel`, `signup-name`, `signup-email`, `signup-password`, `signup-submit`, `signup-to-login`, `login-email`, `login-password`, `login-submit`, `login-to-signup`
 - **Real-AI policy**: E2E runs against real GPT-5.6 when `OPENAI_API_KEY` is available (local: `.dev.vars`; CI: GitHub Secret). Without a key the app's deterministic stub fallback kicks in — specs must pass in both modes.
   - AI-dependent assertions check **presence/non-emptiness only** — never exact AI text.

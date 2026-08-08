@@ -41,6 +41,19 @@ export const attemptPhaseEnum = z.enum([
   'report',
 ]);
 
+// enum の宣言順がそのままフェーズの進行順。順序に依存するロジック
+// (PhaseStepper・履歴パネルの表示判定など)は必ずここを経由する。
+export const ATTEMPT_PHASE_ORDER = attemptPhaseEnum.options;
+
+export function phaseIndex(phase: AttemptPhase): number {
+  return ATTEMPT_PHASE_ORDER.indexOf(phase);
+}
+
+/** current から見て target フェーズが完了済み(=厳密に手前)かどうか。 */
+export function hasCompletedPhase(current: AttemptPhase, target: AttemptPhase): boolean {
+  return phaseIndex(target) < phaseIndex(current);
+}
+
 export const skillLevelEnum = z.enum(['none', 'beginner', 'intermediate', 'advanced']);
 
 export const skillProfileSchema = z.object({

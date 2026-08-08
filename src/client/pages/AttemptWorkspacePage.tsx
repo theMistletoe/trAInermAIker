@@ -1,7 +1,9 @@
 import { MESSAGES } from '@shared/messages';
+import type { ChallengeDetail } from '@shared/schemas';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { ApiError, getChallenge } from '@/api/client';
+import { HistoryPanel } from '@/components/history/HistoryPanel';
 import { PhaseStepper } from '@/components/PhaseStepper';
 import { AssessmentPhase } from '@/components/phases/AssessmentPhase';
 import { QaPhase } from '@/components/phases/QaPhase';
@@ -23,7 +25,7 @@ export default function AttemptWorkspacePage() {
 
 function AttemptWorkspace({ attemptId }: { attemptId: number }) {
   const { state, applyAttempt } = useAttempt(attemptId);
-  const [challengeTitle, setChallengeTitle] = useState<string | null>(null);
+  const [challenge, setChallenge] = useState<ChallengeDetail | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -36,10 +38,11 @@ function AttemptWorkspace({ attemptId }: { attemptId: number }) {
   useEffect(() => {
     if (challengeId === null) return;
     let alive = true;
-    // タイトルは補助情報なので、取得に失敗したら黙って省略する。
+    // 課題情報は補助情報なので、取得に失敗したら黙って省略する
+    // (タイトルは非表示、履歴パネル側はフォールバック文言を出す)。
     getChallenge(challengeId)
       .then((res) => {
-        if (alive) setChallengeTitle(res.challenge.title);
+        if (alive) setChallenge(res.challenge);
       })
       .catch(() => {});
     return () => {
@@ -67,10 +70,11 @@ function AttemptWorkspace({ attemptId }: { attemptId: number }) {
   const { attempt } = state;
   return (
     <div data-testid="attempt-workspace" className="mx-auto flex w-full max-w-5xl flex-col gap-6">
-      {challengeTitle !== null && (
-        <h1 className="text-2xl font-bold tracking-tight">{challengeTitle}</h1>
+      {challenge !== null && (
+        <h1 className="text-2xl font-bold tracking-tight">{challenge.title}</h1>
       )}
       <PhaseStepper current={attempt.phase} />
+      <HistoryPanel attempt={attempt} challenge={challenge} />
       {attempt.phase === 'assessment' ? (
         <AssessmentPhase attempt={attempt} onAttempt={applyAttempt} />
       ) : attempt.phase === 'requirement_chat' ? (
