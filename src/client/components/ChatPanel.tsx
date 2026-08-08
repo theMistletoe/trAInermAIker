@@ -39,14 +39,14 @@ export function ChatPanel({
   disabled = false,
 }: ChatPanelProps) {
   const [draft, setDraft] = useState('');
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: メッセージ追加・送信中表示の変化で末尾へスクロールする
   useEffect(() => {
-    // jsdom は scrollIntoView を実装しないため optional call にする。
-    // instant 固定: html の scroll-behavior: smooth(トップのアンカーCTA用)に
-    // チャット自動スクロールが巻き込まれてアニメーション化するのを防ぐ。
-    bottomRef.current?.scrollIntoView?.({ block: 'end', behavior: 'instant' });
+    // scrollIntoView は window などスクロール可能な祖先まで動かし、レポートを
+    // 読んでいる画面位置が返信到着で飛ぶため、リストコンテナ内だけをスクロールする。
+    const el = listRef.current;
+    if (el !== null) el.scrollTop = el.scrollHeight;
   }, [messages, sending]);
 
   const trimmed = draft.trim();
@@ -63,7 +63,7 @@ export function ChatPanel({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex max-h-96 flex-col gap-3 overflow-y-auto pr-1">
+      <div ref={listRef} className="flex max-h-96 flex-col gap-3 overflow-y-auto pr-1">
         {loading ? (
           <p className="py-4 text-sm text-muted-foreground">読み込み中…</p>
         ) : loadFailed ? (
@@ -100,7 +100,6 @@ export function ChatPanel({
             {MESSAGES.chat.thinking}
           </div>
         )}
-        <div ref={bottomRef} />
       </div>
       {quote !== null && quote !== '' && (
         <div
@@ -125,6 +124,7 @@ export function ChatPanel({
       <div className="flex items-end gap-2">
         <Textarea
           data-testid="chat-input"
+          className="max-h-40"
           value={draft}
           maxLength={CHAT_MESSAGE_MAX}
           placeholder={placeholder}
