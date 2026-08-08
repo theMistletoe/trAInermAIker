@@ -174,6 +174,7 @@ export function ReportPhase({ attempt }: ReportPhaseProps) {
       </div>
       <div className="grid gap-6 lg:grid-cols-[1fr_24rem]">
         <ReportView markdown={state.report.contentMd} onAsk={setQuote} />
+        {/* top-[4.5rem] は sticky ヘッダー(h-14)+余白、max-h はその分を viewport から差し引いた値 */}
         <Card className="self-start py-4 lg:sticky lg:top-[4.5rem] lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
           <CardHeader className="px-4">
             <CardTitle>{MESSAGES.report.chatTitle}</CardTitle>
