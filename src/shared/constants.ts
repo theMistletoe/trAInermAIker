@@ -1,3 +1,10 @@
+// --- Auth ---
+
+// Fixed OTP issued whenever email delivery runs on the stub (no RESEND_API_KEY,
+// or EMAIL_STUB=1). Shared so integration/E2E tests can finish signup without a
+// real inbox; auth.ts structurally keeps it out of production.
+export const EMAIL_STUB_OTP = '424242';
+
 // --- Challenge attempts ---
 
 export const ASSESSMENT_ANSWER_MAX = 500;

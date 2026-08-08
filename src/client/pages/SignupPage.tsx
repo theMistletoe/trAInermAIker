@@ -1,7 +1,7 @@
 import { MESSAGES } from '@shared/messages';
 import { type FormEvent, useState } from 'react';
-import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
+import { EmailOtpVerifyCard } from '@/components/EmailOtpVerifyCard';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -12,8 +12,8 @@ export default function SignupPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [step, setStep] = useState<'form' | 'otp'>('form');
   const [submitting, setSubmitting] = useState(false);
-  const navigate = useNavigate();
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -22,13 +22,26 @@ export default function SignupPage() {
     try {
       const { error } = await signUp.email({ email, password, name });
       if (error) throw new Error(error.message ?? 'sign-up failed');
-      navigate('/');
+      // requireEmailVerification: success means "OTP sent", not signed in.
+      // A duplicate email gets the same anti-enumeration success shape from
+      // the server (no OTP delivered) — showing the OTP step either way keeps
+      // account existence unobservable here too.
+      setStep('otp');
+      toast.success(MESSAGES.auth.otpSent);
     } catch {
       toast.error(MESSAGES.auth.signupFailed);
     } finally {
       setSubmitting(false);
     }
   };
+
+  if (step === 'otp') {
+    return (
+      <div className="mx-auto w-full max-w-2xl">
+        <EmailOtpVerifyCard email={email} testIdPrefix="signup-otp" />
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto w-full max-w-2xl">

@@ -15,10 +15,11 @@ paths:
   - submission: `submission-file-input`, `submission-upload-button`, `submission-file-item`, `submission-file-name`, `submission-file-content`, `submission-file-truncated`, `submission-files-empty`
   - qa: `qa-form`, `qa-question`, `qa-answer-input`, `qa-submit`, `qa-completed`, `qa-generating`, `qa-generate-failed`, `qa-retry-button`
   - report: `report-view`, `report-generating`, `report-generate-failed`, `report-retry-button`, `report-quote`, `report-quote-clear`, `report-ask-button`
-  - nav/auth: `brand-home`, `nav-signup`, `nav-login`, `nav-logout`, `nav-menu`, `nav-menu-panel`, `signup-name`, `signup-email`, `signup-password`, `signup-submit`, `login-email`, `login-password`, `login-submit`
+  - nav/auth: `brand-home`, `nav-signup`, `nav-login`, `nav-logout`, `nav-menu`, `nav-menu-panel`, `signup-name`, `signup-email`, `signup-password`, `signup-submit`, `signup-otp`, `signup-otp-submit`, `signup-otp-resend`, `login-email`, `login-password`, `login-submit`, `login-otp`, `login-otp-submit`, `login-otp-resend`
 - **Real-AI policy**: E2E runs against real GPT-5.6 when `OPENAI_API_KEY` is available (local: `.dev.vars`; CI: GitHub Secret). Without a key the app's deterministic stub fallback kicks in — specs must pass in both modes.
   - AI-dependent assertions check **presence/non-emptiness only** — never exact AI text.
   - Use generous timeouts: a single AI turn can take 30–90s, so pass explicit `expect(...).toBeVisible({ timeout: ... })` values well above the 5s default. `test.setTimeout(900_000)` is used in the challenge-flow spec **only** — don't spread it to cheap specs. Best-effort fallback clicks must pass a short `{ timeout }` and swallow failures — a bare `.click()` inherits the full test timeout and can eat the whole budget retrying.
   - QA question count is dynamic (3–10): fill every `qa-answer-input` then click `qa-submit` — never hard-code a count.
 - Signup emails (and any user-visible content asserted on) must be unique per run (`Date.now()` suffix) — D1 state is shared across tests and runs.
+- **Email OTP policy**: signup has a mandatory email-verification step. E2E assumes the email **stub** (no `RESEND_API_KEY` in `.dev.vars`, or `EMAIL_STUB=1`), which fixes the code to `EMAIL_STUB_OTP` (`src/shared/constants.ts`) — with a real key the OTP is random and delivered to a real inbox, so signup helpers would hang. Keep the stub on for E2E runs.
 - Run a single test: `npx playwright test tests/e2e/challenge-flow.spec.ts -g "<title>"`.

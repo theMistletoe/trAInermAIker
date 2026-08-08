@@ -17,4 +17,14 @@ export interface Bindings {
   // production; absent in tests (auth.ts falls back to a dev default).
   BETTER_AUTH_SECRET?: string;
   BETTER_AUTH_URL?: string;
+  // Resend API for signup-verification OTP emails. Absent → the OTP is logged
+  // to the console with a fixed stub code (see lib/email.ts); required in
+  // production (auth.ts fails loud on a non-local BETTER_AUTH_URL without it).
+  RESEND_API_KEY?: string;
+  // Overrides the default From address ('onboarding@resend.dev', which only
+  // delivers to the Resend account owner's inbox).
+  EMAIL_FROM?: string;
+  // Set to '1' to force the email stub even when a key is set (tests, or
+  // offline local dev via .dev.vars).
+  EMAIL_STUB?: string;
 }

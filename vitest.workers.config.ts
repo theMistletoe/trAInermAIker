@@ -15,9 +15,10 @@ export default defineConfig(async () => {
           d1Databases: ['DB'],
           r2Buckets: ['SUBMISSIONS'],
           compatibilityFlags: ['nodejs_compat'],
-          // AI_STUB keeps every AI agent deterministic and offline in tests —
-          // it must win even when .dev.vars provides real API keys.
-          bindings: { TEST_MIGRATIONS: migrations, AI_STUB: '1' },
+          // AI_STUB / EMAIL_STUB keep the AI agents and the OTP email
+          // deterministic and offline in tests — they must win even when
+          // .dev.vars provides real API keys.
+          bindings: { TEST_MIGRATIONS: migrations, AI_STUB: '1', EMAIL_STUB: '1' },
         },
       }),
     ],

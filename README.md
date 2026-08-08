@@ -18,7 +18,7 @@ flowchart LR
 | DB | Cloudflare D1 (SQLite) | 連番マイグレーション運用（現在 0001〜0007） |
 | ストレージ | Cloudflare R2 | 提出 zip の原本を保存（抽出テキストは D1） |
 | 契約 | `src/shared/schemas.ts`（Zod 単一真実源） | `hc<AppType>` で codegen なしの型付き RPC |
-| 認証 | Better Auth | 共有契約の外側に隔離。attempts 系 API はすべて要ログイン |
+| 認証 | Better Auth + emailOTP プラグイン | 共有契約の外側に隔離。サインアップはメールOTP認証必須、attempts 系 API はすべて要ログイン |
 | AI | OpenAI GPT-5.6（REST + 決定的スタブ縮退） | API キーなしでも全フローが動く |
 | テスト | Vitest（実 D1/R2 workers プール + jsdom/MSW）+ Playwright | unit/integration はスタブ、E2E は実 GPT-5.6 |
 | AI ハーネス | CLAUDE.md + path-scoped rules + hooks + レビュアー agent | 決定論ガード・自動検証ループ・並行レビュー |
@@ -40,7 +40,7 @@ flowchart LR
 - **`routes/`**（`challenges.ts` / `attempts.ts`）: Hono handler + `zValidator`。例外 → `ApiErrorCode` JSON への変換はここだけ。全ハンドラは `c.json(responseSchema.parse(value), status)` で終わる（実行時契約ガード + `hc` の型源）
 - **`services/`**: ビジネスロジック。`AttemptNotFoundError` / `InvalidPhaseError` などの型付きエラーを投げる
 - **`db/`**: D1 prepared statements。snake_case 行 → camelCase ドメインオブジェクトの変換はここだけ
-- **`lib/`**: `ai.ts` / `agent.ts` / `prompts.ts` / `stubs.ts` / `zip.ts` / `errors.ts`
+- **`lib/`**: `ai.ts` / `agent.ts` / `prompts.ts` / `stubs.ts` / `zip.ts` / `email.ts` / `errors.ts`
 - **`content/`**: 課題コンテンツ（下記）
 
 ### 共有 Zod 契約
@@ -78,7 +78,7 @@ src/
 │   ├── services/      # attempt / assessment / chat / submission / qa / report / challenge
 │   ├── db/            # D1 prepared statements（snake_case ↔ camelCase 変換はここだけ）
 │   ├── content/       # 課題コンテンツ（コード管理、公開/秘匿分離）
-│   ├── lib/           # ai / agent / prompts / stubs / zip / errors
+│   ├── lib/           # ai / agent / prompts / stubs / zip / email / errors
 │   ├── auth.ts        # Better Auth（リクエストごとに生成）
 │   └── index.ts       # ルート合成・AppType 捕捉・SPA フォールバック
 ├── shared/            # Zod スキーマ（契約の単一真実源）・定数・UI 文言
@@ -108,6 +108,8 @@ npm run dev   # → http://localhost:5173
 ```bash
 cp .dev.vars.example .dev.vars   # OPENAI_API_KEY を設定（BETTER_AUTH_* も必要に応じて）
 ```
+
+サインアップ時のメール認証コードは、`RESEND_API_KEY` が無い環境では dev サーバーのコンソールに `[email-stub] email-verification OTP for <email>: 424242`（固定コード）として出力されます。実メール送信を試す場合は `.dev.vars` に Resend の API キーを設定してください。
 
 ## テスト
 
@@ -168,8 +170,11 @@ cp .dev.vars.example .dev.vars   # OPENAI_API_KEY を設定（BETTER_AUTH_* も�
    npx wrangler secret put BETTER_AUTH_SECRET   # openssl rand -base64 32
    npx wrangler secret put BETTER_AUTH_URL      # 例 https://<app>.<account>.workers.dev
    npx wrangler secret put OPENAI_API_KEY
-   npx wrangler secret list                     # 3 つ入っていることを確認
+   npx wrangler secret put RESEND_API_KEY       # サインアップのメールOTP送信（必須）
+   npx wrangler secret list                     # 4 つ入っていることを確認
    ```
+
+   `RESEND_API_KEY` は本番で**必須**です。非 localhost の `BETTER_AUTH_URL` に対して実送信手段が無い場合、`createAuth()` が起動時に throw します（固定スタブコードが本番に載る事故の構造的防止）。デフォルトの From（`onboarding@resend.dev`）は Resend アカウント所有者宛にしか届かないため、実運用ではドメイン検証のうえ `wrangler secret put EMAIL_FROM` も設定してください。
 
 3. **（任意）デプロイ後スモークを有効化する** — リポジトリ Variable `PRODUCTION_URL`（例 `https://<app>.<account>.workers.dev`）を設定すると、deploy.yml がデプロイ後に `/` と `/api/challenges` の疎通を検証します
 4. **PR → main merge でデプロイ** — PR で `ci.yml`（check / typecheck / build / test + 実 AI E2E）が green になったら main へ merge。`deploy.yml` は check / typecheck / build / vitest を再実行し（Playwright E2E は PR CI のみ）、R2 バケット確保（`r2 bucket info || create`）→ D1 リモート migrate → `wrangler deploy` → スモークの順に進みます。D1 の `database_id` は設定済み（新規環境を作る場合のみ `npm run db:create:remote` を人間が手動実行して差し替え）

@@ -16,3 +16,17 @@ OPENAI_API_KEY=your-openai-api-key
 # OPENAI_MODEL=gpt-5.6
 # Uncomment to force the stubs even when the credentials above are set.
 # AI_STUB=1
+
+# Resend (signup-verification OTP emails). Optional locally: without a key the
+# OTP is printed to the dev-server console as
+# `[email-stub] email-verification OTP for <email>: 424242` (fixed code), so
+# signup still works end-to-end. Production requires it —
+# `wrangler secret put RESEND_API_KEY` — because createAuth() throws on a
+# non-localhost BETTER_AUTH_URL without a real sender (keeps the fixed stub
+# code from ever shipping).
+# RESEND_API_KEY=your-resend-api-key
+# From address on a Resend-verified domain. The default onboarding@resend.dev
+# only delivers to the Resend account owner's inbox.
+# EMAIL_FROM=auth@your-domain.example
+# Uncomment to force the OTP console stub even when the key above is set.
+# EMAIL_STUB=1

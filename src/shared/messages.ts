@@ -10,6 +10,9 @@ export const MESSAGES = {
     signupFailed: 'サインアップに失敗しました',
     loginFailed: 'メールアドレスまたはパスワードが正しくありません',
     logoutFailed: 'ログアウトに失敗しました',
+    otpSent: '認証コードをメールで送信しました',
+    otpFailed: '認証コードが正しくないか、有効期限が切れています',
+    otpResendFailed: '認証コードの再送信に失敗しました',
   },
   challenge: {
     listTitle: '課題一覧',

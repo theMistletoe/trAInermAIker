@@ -1,5 +1,6 @@
 import { Buffer } from 'node:buffer';
 import { expect, type Page, test } from '@playwright/test';
+import { EMAIL_STUB_OTP } from '../../src/shared/constants';
 import { buildCdkZipBytes } from '../fixtures/cdkZip';
 import { AttemptPage } from './pages/attempt.page';
 import { ChallengesPage } from './pages/challenges.page';
@@ -27,6 +28,11 @@ async function signup(page: Page, email: string): Promise<void> {
   await page.getByTestId('signup-email').fill(email);
   await page.getByTestId('signup-password').fill(PASSWORD);
   await page.getByTestId('signup-submit').click();
+  // メールOTP検証ステップ。E2E はメールスタブ前提（RESEND_API_KEY なし、または
+  // EMAIL_STUB=1）で、認証コードは EMAIL_STUB_OTP に固定される。
+  await expect(page.getByTestId('signup-otp')).toBeVisible({ timeout: 15_000 });
+  await page.getByTestId('signup-otp').fill(EMAIL_STUB_OTP);
+  await page.getByTestId('signup-otp-submit').click();
 }
 
 test('チャレンジ挑戦のフルジャーニー（実AI）', async ({ page }) => {

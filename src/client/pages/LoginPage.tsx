@@ -2,15 +2,17 @@ import { MESSAGES } from '@shared/messages';
 import { type FormEvent, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
+import { EmailOtpVerifyCard } from '@/components/EmailOtpVerifyCard';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { signIn } from '@/lib/authClient';
+import { emailOtp, signIn } from '@/lib/authClient';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [step, setStep] = useState<'form' | 'otp'>('form');
   const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
 
@@ -20,6 +22,15 @@ export default function LoginPage() {
     setSubmitting(true);
     try {
       const { error } = await signIn.email({ email, password });
+      if (error?.status === 403 && error.code === 'EMAIL_NOT_VERIFIED') {
+        // Password was correct but the address never got verified (e.g. the
+        // signup OTP step was abandoned). Send a fresh code — best effort, the
+        // OTP step has its own resend button — and let the user finish here.
+        await emailOtp.sendVerificationOtp({ email, type: 'email-verification' });
+        setStep('otp');
+        toast.success(MESSAGES.auth.otpSent);
+        return;
+      }
       if (error) throw new Error(error.message ?? 'sign-in failed');
       navigate('/');
     } catch {
@@ -28,6 +39,14 @@ export default function LoginPage() {
       setSubmitting(false);
     }
   };
+
+  if (step === 'otp') {
+    return (
+      <div className="mx-auto w-full max-w-2xl">
+        <EmailOtpVerifyCard email={email} testIdPrefix="login-otp" />
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto w-full max-w-2xl">

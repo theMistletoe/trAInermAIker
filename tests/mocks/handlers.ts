@@ -37,10 +37,37 @@ import {
 // `mswServer.use(...)` to override per-case (404s, drift simulations, etc.).
 // Every response is re-parsed through its schema so mocks can never silently
 // diverge from the contract.
+// Minimal Better Auth user payload for the auth endpoint defaults below (same
+// shape AppHeader.test.tsx uses for its signed-in session).
+const authUser = {
+  id: 'user-1',
+  email: 'user@example.com',
+  name: 'テストユーザー',
+  emailVerified: true,
+  image: null,
+  createdAt: '2026-01-01T00:00:00.000Z',
+  updatedAt: '2026-01-01T00:00:00.000Z',
+};
+
 export const defaultHandlers = [
   // Better Auth session probe fired by <AppHeader> via useSession(). Default to
   // anonymous (null). Tests needing a signed-in user override this per-case.
   http.get('/api/auth/get-session', () => HttpResponse.json(null)),
+
+  // Better Auth email+password / email-OTP endpoints. Like get-session these
+  // are plain JSON outside the shared Zod contract (Better Auth owns its own
+  // wire shapes). Happy-path defaults; error cases override per-test.
+  // token:null mirrors requireEmailVerification — sign-up issues no session.
+  http.post('/api/auth/sign-up/email', () => HttpResponse.json({ token: null, user: authUser })),
+  http.post('/api/auth/sign-in/email', () =>
+    HttpResponse.json({ redirect: false, token: 'token-1', user: authUser }),
+  ),
+  http.post('/api/auth/email-otp/send-verification-otp', () =>
+    HttpResponse.json({ success: true }),
+  ),
+  http.post('/api/auth/email-otp/verify-email', () =>
+    HttpResponse.json({ status: true, token: 'token-1', user: authUser }),
+  ),
 
   // --- challenges ---
 
